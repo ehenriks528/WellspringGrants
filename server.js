@@ -9,7 +9,7 @@ const { generateGrant } = require('./generateGrant');
 const { sendConfirmationEmail } = require('./sendEmail');
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
 
 // Parse form submissions and JSON

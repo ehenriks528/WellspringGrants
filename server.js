@@ -111,8 +111,8 @@ app.post('/checkout', async (req, res) => {
       mode: 'payment',
       customer_email: submission.contact_email,
       metadata: { submissionId: String(submission.id) },
-      success_url: `http://localhost:${PORT}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `http://localhost:${PORT}/payment-cancelled`,
+      success_url: `${process.env.APP_URL}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${process.env.APP_URL}/payment-cancelled`,
     });
 
     res.redirect(303, session.url);

@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 44 44" width="44" height="44" role="img" aria-label="Wellspring Grants">
+  <!-- Circle background (the wellspring) -->
+  <circle cx="22" cy="22" r="21" fill="#2a6049"/>
+  <!-- Stem -->
+  <line x1="22" y1="35" x2="22" y2="13" stroke="white" stroke-width="2.2" stroke-linecap="round"/>
+  <!-- Left leaf -->
+  <path d="M22 28 C15 25 13 16 17 11 C18 15 20 23 22 26" fill="white"/>
+  <!-- Right leaf -->
+  <path d="M22 21 C29 18 31 9 27 4 C26 8 24 15 22 19" fill="white"/>
+  <!-- Root dot -->
+  <circle cx="22" cy="36" r="2.2" fill="white" opacity="0.6"/>
+</svg>

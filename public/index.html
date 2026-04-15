@@ -3,388 +3,561 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Wellspring Grants — Intake Form</title>
+  <title>Wellspring Grants — Grant Writing for Small Nonprofits</title>
+  <meta name="description" content="Complete, funder-targeted grant applications written and delivered in 48 hours. Starting at $450.">
   <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
       font-family: Georgia, serif;
-      background-color: #f4f1eb;
-      color: #2c2c2c;
-      padding: 40px 20px;
-    }
-
-    .container {
-      max-width: 680px;
-      margin: 0 auto;
       background: #ffffff;
-      border-radius: 8px;
-      padding: 48px 40px;
-      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+      color: #2c2c2c;
     }
 
-    .logo {
-      font-size: 22px;
+    /* ── Nav ── */
+    nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 20px 48px;
+      border-bottom: 1px solid #f0ede6;
+      background: #fff;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .nav-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+    }
+
+    .nav-logo-name {
+      font-size: 17px;
       font-weight: bold;
       color: #2a6049;
-      margin-bottom: 6px;
-      letter-spacing: 0.5px;
+      letter-spacing: 0.3px;
     }
 
-    h1 {
-      font-size: 26px;
-      color: #1a1a1a;
-      margin-bottom: 10px;
-    }
-
-    .intro {
-      font-size: 15px;
-      color: #555;
-      line-height: 1.6;
-      margin-bottom: 36px;
-      border-left: 3px solid #2a6049;
-      padding-left: 14px;
-    }
-
-    .form-group {
-      margin-bottom: 28px;
-    }
-
-    label {
-      display: block;
+    .nav-cta {
+      background: #2a6049;
+      color: white;
+      padding: 10px 22px;
+      border-radius: 5px;
+      text-decoration: none;
       font-size: 14px;
       font-weight: bold;
-      color: #333;
-      margin-bottom: 6px;
-      text-transform: uppercase;
-      letter-spacing: 0.4px;
+      letter-spacing: 0.3px;
+      transition: background 0.2s;
     }
 
-    .hint {
-      font-size: 13px;
-      color: #777;
-      font-weight: normal;
-      text-transform: none;
-      letter-spacing: 0;
-      margin-top: 2px;
-      margin-bottom: 8px;
+    .nav-cta:hover { background: #1e4a36; }
+
+    /* ── Hero ── */
+    .hero {
+      background: #f4f1eb;
+      padding: 88px 48px 80px;
+      text-align: center;
     }
 
-    input[type="text"],
-    input[type="email"],
-    input[type="number"],
-    input[type="date"],
-    input[type="url"],
-    textarea,
-    select {
-      width: 100%;
-      padding: 12px 14px;
-      border: 1px solid #ccc;
-      border-radius: 5px;
-      font-size: 15px;
-      font-family: Georgia, serif;
-      color: #2c2c2c;
-      background: #fafafa;
-      transition: border-color 0.2s;
-    }
-
-    input:focus,
-    textarea:focus,
-    select:focus {
-      outline: none;
-      border-color: #2a6049;
-      background: #fff;
-    }
-
-    textarea {
-      resize: vertical;
-      min-height: 100px;
-    }
-
-    .section-divider {
-      border: none;
-      border-top: 1px solid #e8e4dc;
-      margin: 36px 0;
-    }
-
-    .section-title {
+    .hero-eyebrow {
       font-size: 13px;
       text-transform: uppercase;
-      letter-spacing: 1px;
+      letter-spacing: 1.5px;
       color: #2a6049;
       font-weight: bold;
       margin-bottom: 20px;
     }
 
-    .row {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 20px;
+    .hero h1 {
+      font-size: 46px;
+      line-height: 1.2;
+      color: #1a1a1a;
+      max-width: 720px;
+      margin: 0 auto 24px;
     }
 
-    @media (max-width: 520px) {
-      .row {
-        grid-template-columns: 1fr;
-      }
-
-      .container {
-        padding: 32px 24px;
-      }
+    .hero h1 em {
+      font-style: normal;
+      color: #2a6049;
     }
 
-    .required-star {
-      color: #c0392b;
-      margin-left: 3px;
+    .hero-sub {
+      font-size: 18px;
+      color: #555;
+      line-height: 1.7;
+      max-width: 580px;
+      margin: 0 auto 40px;
     }
 
-    /* Radio buttons and checkboxes */
-    .radio-group,
-    .checkbox-group {
+    .hero-actions {
       display: flex;
-      gap: 24px;
-      margin-top: 4px;
+      gap: 16px;
+      justify-content: center;
       flex-wrap: wrap;
     }
 
-    .radio-group label,
-    .checkbox-group label {
+    .btn-primary {
+      background: #2a6049;
+      color: white;
+      padding: 16px 32px;
+      border-radius: 5px;
+      text-decoration: none;
+      font-size: 16px;
+      font-weight: bold;
+      letter-spacing: 0.3px;
+      transition: background 0.2s;
+      display: inline-block;
+    }
+
+    .btn-primary:hover { background: #1e4a36; }
+
+    .hero-note {
+      font-size: 14px;
+      color: #888;
+      margin-top: 16px;
+    }
+
+    /* ── Trust bar ── */
+    .trust-bar {
+      border-top: 1px solid #e8e4dc;
+      border-bottom: 1px solid #e8e4dc;
+      background: #fff;
+      padding: 22px 48px;
+      display: flex;
+      justify-content: center;
+      gap: 48px;
+      flex-wrap: wrap;
+    }
+
+    .trust-item {
       display: flex;
       align-items: center;
       gap: 8px;
-      font-size: 15px;
-      font-weight: normal;
-      text-transform: none;
-      letter-spacing: 0;
-      cursor: pointer;
-      color: #2c2c2c;
+      font-size: 14px;
+      color: #444;
     }
 
-    .radio-group input[type="radio"],
-    .checkbox-group input[type="checkbox"] {
-      width: auto;
-      margin: 0;
-      accent-color: #2a6049;
-    }
-
-    button[type="submit"] {
-      width: 100%;
-      padding: 16px;
-      background-color: #2a6049;
-      color: white;
+    .trust-icon {
+      color: #2a6049;
       font-size: 16px;
-      font-family: Georgia, serif;
+    }
+
+    /* ── Sections ── */
+    section {
+      padding: 80px 48px;
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+
+    .section-label {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: #2a6049;
       font-weight: bold;
-      border: none;
+      margin-bottom: 12px;
+    }
+
+    h2 {
+      font-size: 32px;
+      color: #1a1a1a;
+      margin-bottom: 16px;
+      line-height: 1.3;
+    }
+
+    .section-intro {
+      font-size: 17px;
+      color: #555;
+      line-height: 1.7;
+      max-width: 620px;
+      margin-bottom: 52px;
+    }
+
+    /* ── How it works ── */
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 40px;
+    }
+
+    .step-number {
+      font-size: 36px;
+      font-weight: bold;
+      color: #e8e4dc;
+      margin-bottom: 12px;
+      line-height: 1;
+    }
+
+    .step h3 {
+      font-size: 18px;
+      color: #1a1a1a;
+      margin-bottom: 10px;
+    }
+
+    .step p {
+      font-size: 15px;
+      color: #666;
+      line-height: 1.7;
+    }
+
+    /* ── What's included ── */
+    .included-bg {
+      background: #f4f1eb;
+    }
+
+    .included-bg section {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 60px;
+      align-items: center;
+    }
+
+    .included-list {
+      list-style: none;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px 24px;
+    }
+
+    .included-list li {
+      font-size: 15px;
+      color: #2c2c2c;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .included-list li::before {
+      content: "✓";
+      color: #2a6049;
+      font-weight: bold;
+      flex-shrink: 0;
+    }
+
+    /* ── Pricing ── */
+    .pricing-card {
+      background: #fff;
+      border: 2px solid #2a6049;
+      border-radius: 10px;
+      padding: 40px 44px;
+      max-width: 480px;
+    }
+
+    .pricing-label {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #2a6049;
+      font-weight: bold;
+      margin-bottom: 8px;
+    }
+
+    .pricing-amount {
+      font-size: 52px;
+      font-weight: bold;
+      color: #1a1a1a;
+      line-height: 1;
+      margin-bottom: 4px;
+    }
+
+    .pricing-note {
+      font-size: 13px;
+      color: #999;
+      margin-bottom: 28px;
+    }
+
+    .pricing-features {
+      list-style: none;
+      margin-bottom: 32px;
+    }
+
+    .pricing-features li {
+      font-size: 15px;
+      color: #444;
+      padding: 8px 0;
+      border-bottom: 1px solid #f0ede6;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .pricing-features li:last-child { border-bottom: none; }
+
+    .pricing-features li::before {
+      content: "✓";
+      color: #2a6049;
+      font-weight: bold;
+    }
+
+    /* ── FAQ ── */
+    .faq-list {
+      max-width: 680px;
+    }
+
+    .faq-item {
+      border-bottom: 1px solid #e8e4dc;
+      padding: 24px 0;
+    }
+
+    .faq-item:first-child { border-top: 1px solid #e8e4dc; }
+
+    .faq-q {
+      font-size: 17px;
+      font-weight: bold;
+      color: #1a1a1a;
+      margin-bottom: 10px;
+    }
+
+    .faq-a {
+      font-size: 15px;
+      color: #555;
+      line-height: 1.7;
+    }
+
+    /* ── Final CTA ── */
+    .cta-section {
+      background: #2a6049;
+      padding: 80px 48px;
+      text-align: center;
+    }
+
+    .cta-section h2 {
+      color: #fff;
+      font-size: 34px;
+      margin-bottom: 16px;
+    }
+
+    .cta-section p {
+      color: rgba(255,255,255,0.8);
+      font-size: 17px;
+      margin-bottom: 36px;
+      line-height: 1.6;
+    }
+
+    .btn-light {
+      background: #fff;
+      color: #2a6049;
+      padding: 16px 36px;
       border-radius: 5px;
-      cursor: pointer;
-      margin-top: 12px;
-      letter-spacing: 0.5px;
-      transition: background-color 0.2s;
+      text-decoration: none;
+      font-size: 16px;
+      font-weight: bold;
+      display: inline-block;
+      transition: background 0.2s;
     }
 
-    button[type="submit"]:hover {
-      background-color: #1e4a36;
+    .btn-light:hover { background: #f4f1eb; }
+
+    /* ── Footer ── */
+    footer {
+      background: #1a1a1a;
+      padding: 36px 48px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
     }
 
-    .footer-note {
+    .footer-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .footer-logo-name {
+      font-size: 15px;
+      font-weight: bold;
+      color: #fff;
+    }
+
+    footer p {
       font-size: 13px;
       color: #888;
-      text-align: center;
-      margin-top: 20px;
-      line-height: 1.5;
+    }
+
+    footer a {
+      color: #aaa;
+      text-decoration: none;
+    }
+
+    footer a:hover { color: #fff; }
+
+    /* ── Responsive ── */
+    @media (max-width: 700px) {
+      nav { padding: 16px 24px; }
+      .hero { padding: 60px 24px 52px; }
+      .hero h1 { font-size: 32px; }
+      .hero-sub { font-size: 16px; }
+      .trust-bar { padding: 18px 24px; gap: 24px; }
+      section { padding: 60px 24px; }
+      .steps { grid-template-columns: 1fr; gap: 32px; }
+      .included-bg section { grid-template-columns: 1fr; }
+      .included-list { grid-template-columns: 1fr; }
+      .cta-section { padding: 60px 24px; }
+      footer { padding: 28px 24px; flex-direction: column; align-items: flex-start; }
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <div class="logo">Wellspring Grants</div>
-    <h1>Grant Writing Intake Form</h1>
-    <p class="intro">
-      Tell us about your organization and the grant you're applying for. We'll use this
-      to draft a complete, targeted application — delivered within 48 hours.
-      <br><br>
-      We currently support foundation and community grants. Federal grants (Grants.gov) are not yet available.
+
+  <!-- Nav -->
+  <nav>
+    <a href="/" class="nav-logo">
+      <img src="/logo.svg" width="32" height="32" alt="Wellspring Grants">
+      <span class="nav-logo-name">Wellspring Grants</span>
+    </a>
+    <a href="/apply" class="nav-cta">Start Your Application</a>
+  </nav>
+
+  <!-- Hero -->
+  <div class="hero">
+    <div class="hero-eyebrow">Grant Writing for Small Nonprofits</div>
+    <h1>Your next grant application,<br><em>written and delivered in 48 hours.</em></h1>
+    <p class="hero-sub">
+      Wellspring Grants produces complete, funder-targeted grant applications for small nonprofits —
+      written by AI, reviewed by a human editor, and delivered ready to submit.
     </p>
-
-    <form action="/checkout" method="POST">
-
-      <!-- Section 1: Your Organization -->
-      <p class="section-title">About Your Organization</p>
-
-      <div class="form-group">
-        <label for="org_name">Organization Name <span class="required-star">*</span></label>
-        <input type="text" id="org_name" name="org_name" placeholder="e.g. River Valley Food Pantry" required>
-      </div>
-
-      <div class="form-group">
-        <label for="mission">Mission Statement <span class="required-star">*</span></label>
-        <p class="hint">One or two sentences describing your organization's core purpose.</p>
-        <textarea id="mission" name="mission" placeholder="e.g. We provide emergency food assistance and nutrition education to families in rural River County." required></textarea>
-      </div>
-
-      <div class="form-group">
-        <label for="org_location">City / State <span class="required-star">*</span></label>
-        <input type="text" id="org_location" name="org_location" placeholder="e.g. Portland, OR" required>
-      </div>
-
-      <div class="form-group">
-        <label>501(c)(3) Status <span class="required-star">*</span></label>
-        <p class="hint">Most funders require you to be a registered 501(c)(3) nonprofit.</p>
-        <div class="radio-group">
-          <label><input type="radio" name="tax_exempt" value="yes" required> Yes, we are a 501(c)(3)</label>
-          <label><input type="radio" name="tax_exempt" value="no"> No, we are not</label>
-          <label><input type="radio" name="tax_exempt" value="pending"> Application pending</label>
-        </div>
-      </div>
-
-      <hr class="section-divider">
-
-      <!-- Section 2: The Grant -->
-      <p class="section-title">About the Grant</p>
-
-      <div class="form-group">
-        <label for="funder_name">Funder Name <span class="required-star">*</span></label>
-        <p class="hint">The name of the foundation or organization offering this grant.</p>
-        <input type="text" id="funder_name" name="funder_name" placeholder="e.g. Robert Wood Johnson Foundation" required>
-      </div>
-
-      <div class="form-group">
-        <label for="grant_program">Grant Program Name <span class="required-star">*</span></label>
-        <p class="hint">The specific grant program or opportunity you're applying to.</p>
-        <input type="text" id="grant_program" name="grant_program" placeholder="e.g. Health Equity Innovation Fund 2025" required>
-      </div>
-
-      <div class="form-group">
-        <label for="guidelines_url">Link to Grant Guidelines <span class="required-star">*</span></label>
-        <p class="hint">A URL to the funder's grant page or RFP. This helps us tailor your application to their priorities.</p>
-        <input type="url" id="guidelines_url" name="guidelines_url" placeholder="e.g. https://www.rwjf.org/grants/2025/health-equity" required>
-      </div>
-
-      <div class="form-group">
-        <label for="grant_deadline">Application Deadline <span class="required-star">*</span></label>
-        <input type="date" id="grant_deadline" name="grant_deadline" required>
-      </div>
-
-      <div class="form-group">
-        <label for="special_requirements">Special Requirements</label>
-        <p class="hint">Paste any specific instructions here: word limits per section, required headings, formatting rules, or anything the funder explicitly asks for.</p>
-        <textarea id="special_requirements" name="special_requirements" placeholder="e.g. Needs statement: 300 words max. Project narrative: 500 words max. Must include a sustainability plan section."></textarea>
-      </div>
-
-      <hr class="section-divider">
-
-      <!-- Section 3: The Project -->
-      <p class="section-title">About the Project</p>
-
-      <div class="form-group">
-        <label for="problem_statement">The Problem You're Solving <span class="required-star">*</span></label>
-        <p class="hint">What issue or need does this project address? Use local data or examples if you have them.</p>
-        <textarea id="problem_statement" name="problem_statement" placeholder="e.g. 1 in 4 children in River County experiences food insecurity, yet the nearest grocery store is 22 miles away for families in our three target communities. Existing food banks are at 140% capacity." required></textarea>
-      </div>
-
-      <div class="form-group">
-        <label for="project_description">Project Description <span class="required-star">*</span></label>
-        <p class="hint">What will you do with this funding? Be specific — the more detail, the stronger the grant.</p>
-        <textarea id="project_description" name="project_description" rows="5" placeholder="e.g. We will purchase a refrigerated van and hire a part-time driver to deliver fresh produce to three rural communities twice per week..." required></textarea>
-      </div>
-
-      <div class="form-group">
-        <label for="target_population">Who Do You Serve? <span class="required-star">*</span></label>
-        <p class="hint">Describe the people who will benefit from this project.</p>
-        <textarea id="target_population" name="target_population" placeholder="e.g. Low-income families with children under 18 in rural River County, approximately 400 households per year." required></textarea>
-      </div>
-
-      <div class="form-group">
-        <label for="expected_outcomes">Expected Outcomes <span class="required-star">*</span></label>
-        <p class="hint">What measurable results do you expect? Numbers help (e.g. "serve 200 people").</p>
-        <textarea id="expected_outcomes" name="expected_outcomes" placeholder="e.g. Deliver 500 produce boxes per month; reduce food insecurity for 400 households; train 2 staff members in nutrition education." required></textarea>
-      </div>
-
-      <hr class="section-divider">
-
-      <!-- Section 4: Funding -->
-      <p class="section-title">Funding Details</p>
-
-      <div class="row">
-        <div class="form-group">
-          <label for="amount_requested">Amount Requested ($) <span class="required-star">*</span></label>
-          <input type="number" id="amount_requested" name="amount_requested" placeholder="e.g. 25000" min="0" required>
-        </div>
-        <div class="form-group">
-          <label for="annual_budget">Annual Operating Budget ($)</label>
-          <p class="hint" style="margin-bottom: 8px;">Some funders ask for this.</p>
-          <input type="number" id="annual_budget" name="annual_budget" placeholder="e.g. 180000" min="0">
-        </div>
-      </div>
-
-      <div class="form-group">
-        <label for="budget_breakdown">How Will Funds Be Used? <span class="required-star">*</span></label>
-        <p class="hint">A rough budget breakdown helps us write the financials section.</p>
-        <textarea id="budget_breakdown" name="budget_breakdown" placeholder="e.g. $18,000 vehicle purchase, $5,000 staff (part-time driver, 6 months), $2,000 fuel and maintenance." required></textarea>
-      </div>
-
-      <hr class="section-divider">
-
-      <!-- Section 5: Delivery & Contact -->
-      <p class="section-title">Delivery & Contact</p>
-
-      <div class="form-group">
-        <label>Preferred Delivery Format <span class="required-star">*</span></label>
-        <div class="radio-group">
-          <label><input type="radio" name="delivery_format" value="google_doc" required checked> Google Doc</label>
-          <label><input type="radio" name="delivery_format" value="word"> Word Document (.docx)</label>
-        </div>
-      </div>
-
-      <div class="row">
-        <div class="form-group">
-          <label for="contact_name">Your Name <span class="required-star">*</span></label>
-          <input type="text" id="contact_name" name="contact_name" placeholder="e.g. Maria Gonzalez" required>
-        </div>
-        <div class="form-group">
-          <label for="contact_email">Email Address <span class="required-star">*</span></label>
-          <input type="email" id="contact_email" name="contact_email" placeholder="e.g. maria@riverfoodpantry.org" required>
-        </div>
-      </div>
-
-      <div class="form-group">
-        <label for="referral_source">How Did You Hear About Us?</label>
-        <select id="referral_source" name="referral_source">
-          <option value="">— Select one —</option>
-          <option value="google">Google search</option>
-          <option value="social_media">Social media</option>
-          <option value="referral">Referral from a colleague</option>
-          <option value="nonprofit_network">Nonprofit network or association</option>
-          <option value="other">Other</option>
-        </select>
-      </div>
-
-      <div class="form-group">
-        <label for="anything_else">Anything Else We Should Know?</label>
-        <p class="hint">Past grants received, relationships with this funder, or any other context that would help.</p>
-        <textarea id="anything_else" name="anything_else" placeholder="Optional"></textarea>
-      </div>
-
-      <div style="background:#f0f7f4;border:1px solid #c3ddd4;border-radius:6px;padding:16px 20px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;">
-        <div>
-          <strong style="font-size:15px;">Single Grant Application</strong>
-          <div style="font-size:13px;color:#555;margin-top:2px;">Delivered within 48 hours as a Google Doc or Word file</div>
-        </div>
-        <div style="font-size:22px;font-weight:bold;color:#2a6049;">$450</div>
-      </div>
-
-      <button type="submit">Continue to Payment &rarr;</button>
-
-      <p class="footer-note">
-        We'll review your submission and deliver a complete grant draft within 48 hours.<br>
-        Questions? Email us at hello@wellspringgrants.com
-      </p>
-
-    </form>
+    <div class="hero-actions">
+      <a href="/apply" class="btn-primary">Start Your Application — $450 &rarr;</a>
+    </div>
+    <p class="hero-note">Foundation and community grants &nbsp;·&nbsp; 48-hour delivery &nbsp;·&nbsp; No retainer required</p>
   </div>
+
+  <!-- Trust bar -->
+  <div class="trust-bar">
+    <div class="trust-item"><span class="trust-icon">⏱</span> 48-hour turnaround</div>
+    <div class="trust-item"><span class="trust-icon">✦</span> Human-reviewed before delivery</div>
+    <div class="trust-item"><span class="trust-icon">◎</span> Targeted to your specific funder</div>
+    <div class="trust-item"><span class="trust-icon">$</span> A fraction of traditional grant writer rates</div>
+  </div>
+
+  <!-- How it works -->
+  <section>
+    <div class="section-label">How It Works</div>
+    <h2>From intake form to finished draft<br>in three steps.</h2>
+    <p class="section-intro">
+      No calls, no back-and-forth, no waiting weeks for a first draft.
+      Fill out our intake form, and we handle everything else.
+    </p>
+    <div class="steps">
+      <div class="step">
+        <div class="step-number">01</div>
+        <h3>Fill out the intake form</h3>
+        <p>Tell us about your organization, your project, and the specific grant you're applying for. Takes about 15 minutes. The more detail you give us, the stronger your application.</p>
+      </div>
+      <div class="step">
+        <div class="step-number">02</div>
+        <h3>We write and review it</h3>
+        <p>We draft a complete, funder-targeted application across all required sections. A human editor reviews every section for accuracy, tone, and alignment with the funder's stated priorities before it leaves our hands.</p>
+      </div>
+      <div class="step">
+        <div class="step-number">03</div>
+        <h3>You receive and submit</h3>
+        <p>Your completed application arrives within 48 hours as a Google Doc or Word file. You review it, make any notes, and submit directly to the funder — you stay in control of the timeline.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- What's included -->
+  <div class="included-bg">
+    <section>
+      <div>
+        <div class="section-label">What's Included</div>
+        <h2>A complete application,<br>not a starting point.</h2>
+        <p class="section-intro" style="margin-bottom:0;">
+          Every Wellspring application includes all eight standard sections of a community foundation grant —
+          written to the funder's specific priorities, not copied from a template.
+        </p>
+      </div>
+      <ul class="included-list">
+        <li>Executive Summary</li>
+        <li>Organizational Background</li>
+        <li>Statement of Need</li>
+        <li>Project Description</li>
+        <li>Goals &amp; Objectives</li>
+        <li>Evaluation Plan</li>
+        <li>Budget Narrative</li>
+        <li>Sustainability Plan</li>
+      </ul>
+    </section>
+  </div>
+
+  <!-- Pricing -->
+  <section>
+    <div class="section-label">Pricing</div>
+    <h2>Simple, transparent pricing.</h2>
+    <p class="section-intro">
+      No retainer. No hourly billing. No surprise fees.
+      One flat rate per application — pay when you submit.
+    </p>
+    <div class="pricing-card">
+      <div class="pricing-label">Single Grant Application</div>
+      <div class="pricing-amount">$450</div>
+      <div class="pricing-note">Launch pricing — increasing to $600 in Month 4</div>
+      <ul class="pricing-features">
+        <li>Complete 8-section grant application</li>
+        <li>Targeted to your specific funder &amp; program</li>
+        <li>Human editorial review before delivery</li>
+        <li>Delivered within 48 hours</li>
+        <li>Google Doc or Word format</li>
+        <li>Revision support if something needs adjusting</li>
+      </ul>
+      <a href="/apply" class="btn-primary" style="width:100%;text-align:center;">Start Your Application &rarr;</a>
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section style="padding-top:0;">
+    <div class="section-label">FAQ</div>
+    <h2>Common questions.</h2>
+    <div class="faq-list">
+      <div class="faq-item">
+        <div class="faq-q">What types of grants do you write?</div>
+        <div class="faq-a">We specialize in foundation and community grants — the kind offered by private foundations, community foundations, and corporate giving programs. We do not currently support federal grants (Grants.gov), though that's coming.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">Do you submit the application for us?</div>
+        <div class="faq-a">No — we deliver the complete written application, and you submit it through the funder's portal. This keeps your organization in control of the submission and any funder relationship.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">How is this different from using AI myself?</div>
+        <div class="faq-a">The output of a generic AI prompt and a funder-targeted grant application are very different things. We've spent significant time engineering a process that produces grant-quality writing — not generic output. Every draft is reviewed by a human editor before it reaches you.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">What if the draft needs changes?</div>
+        <div class="faq-a">We stand behind our work. If something doesn't read right or needs adjusting after you review it, reach out and we'll revise it.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">Do I need to be a 501(c)(3)?</div>
+        <div class="faq-a">Most foundation grants require 501(c)(3) status, so we ask about this in the intake form. If your status is pending, we'll still write the application — just note it in your form and we'll handle it appropriately.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Final CTA -->
+  <div class="cta-section">
+    <h2>Ready to stop losing grants<br>to better-written applications?</h2>
+    <p>Fill out the intake form in 15 minutes.<br>Receive a complete, funder-targeted grant application in 48 hours.</p>
+    <a href="/apply" class="btn-light">Start Your Application — $450 &rarr;</a>
+  </div>
+
+  <!-- Footer -->
+  <footer>
+    <div class="footer-logo">
+      <img src="/logo.svg" width="28" height="28" alt="Wellspring Grants">
+      <span class="footer-logo-name">Wellspring Grants</span>
+    </div>
+    <p>
+      <a href="/apply">Start Application</a>
+      &nbsp;&nbsp;·&nbsp;&nbsp;
+      <a href="mailto:hello@wellspringgrants.com">hello@wellspringgrants.com</a>
+    </p>
+    <p style="color:#555;">© 2026 Wellspring Grants</p>
+  </footer>
+
 </body>
 </html>

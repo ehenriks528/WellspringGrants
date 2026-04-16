@@ -10,7 +10,7 @@ async function sendConfirmationEmail(submission) {
 
   try {
     await resend.emails.send({
-      from: 'Wellspring Grants <onboarding@resend.dev>',
+      from: 'Wellspring Grants <hello@wellspringgrants.com>',
       to: submission.contact_email,
       subject: `We received your grant application — ${submission.funder_name}`,
       html: `

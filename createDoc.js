@@ -20,16 +20,27 @@ async function createGrantDoc(submission) {
   const folderName = submission.org_name;
   const docTitle = `Grant Application — ${submission.org_name}`;
 
-  // Create a subfolder inside 01_Active Clients
-  const folderResponse = await drive.files.create({
-    requestBody: {
-      name: folderName,
-      mimeType: 'application/vnd.google-apps.folder',
-      parents: [process.env.GOOGLE_DRIVE_FOLDER_ID]
-    }
+  // Reuse existing folder if one already exists — prevents duplicates from repeated button clicks
+  let clientFolderId;
+  const existingFolders = await drive.files.list({
+    q: `name='${folderName.replace(/'/g, "\\'")}' and mimeType='application/vnd.google-apps.folder' and '${process.env.GOOGLE_DRIVE_FOLDER_ID}' in parents and trashed=false`,
+    fields: 'files(id, name)'
   });
 
-  const clientFolderId = folderResponse.data.id;
+  if (existingFolders.data.files.length > 0) {
+    clientFolderId = existingFolders.data.files[0].id;
+    console.log(`Reusing existing folder: ${folderName} (${clientFolderId})`);
+  } else {
+    const folderResponse = await drive.files.create({
+      requestBody: {
+        name: folderName,
+        mimeType: 'application/vnd.google-apps.folder',
+        parents: [process.env.GOOGLE_DRIVE_FOLDER_ID]
+      }
+    });
+    clientFolderId = folderResponse.data.id;
+    console.log(`Created new folder: ${folderName} (${clientFolderId})`);
+  }
 
   // Create the Google Doc inside that folder
   const docResponse = await drive.files.create({

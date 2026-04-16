@@ -389,11 +389,17 @@ app.post('/admin/submission/:id/create-doc', async (req, res) => {
     saveSubmissions(submissions);
 
     console.log(`Google Doc created: ${docUrl}`);
+    return res.redirect(`/admin/submission/${req.params.id}`);
   } catch (err) {
-    console.error('Google Doc creation failed:', err.message);
+    console.error('Google Doc creation failed:', err);
+    return res.status(500).send(`
+      <p style="font-family:Georgia,serif;padding:40px;color:#842029;">
+        <strong>Google Doc creation failed:</strong><br><br>
+        <code style="background:#f8d7da;padding:12px;display:block;white-space:pre-wrap;">${err.message}</code>
+        <br><a href="/admin/submission/${req.params.id}" style="color:#2a6049;">← Back</a>
+      </p>
+    `);
   }
-
-  res.redirect(`/admin/submission/${req.params.id}`);
 });
 
 app.post('/admin/submission/:id/mark-delivered', (req, res) => {

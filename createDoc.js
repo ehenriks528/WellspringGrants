@@ -17,7 +17,7 @@ async function createGrantDoc(submission) {
   const drive = google.drive({ version: 'v3', auth });
   const docs = google.docs({ version: 'v1', auth });
 
-  const folderName = `${submission.org_name} — ${submission.funder_name}`;
+  const folderName = submission.org_name;
   const docTitle = `Grant Application — ${submission.org_name}`;
 
   // Create a subfolder inside 01_Active Clients

@@ -7,6 +7,7 @@ const basicAuth = require('express-basic-auth');
 const Stripe = require('stripe');
 const { generateGrant } = require('./generateGrant');
 const { sendConfirmationEmail } = require('./sendEmail');
+const { createGrantDoc } = require('./createDoc');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -276,13 +277,25 @@ app.get('/admin/submission/:id', (req, res) => {
          ${submission.status === 'generating' ? 'Grant is still generating — refresh in a moment.' : 'No draft available.'}
        </div>`;
 
-  const deliverButton = submission.status === 'draft_ready'
+  const createDocButton = submission.status === 'draft_ready' && !submission.docUrl
+    ? `<form method="POST" action="/admin/submission/${submission.id}/create-doc" style="display:inline;">
+         <button type="submit" style="background:#2a6049;color:white;border:none;padding:10px 20px;border-radius:5px;font-size:14px;font-family:Georgia,serif;cursor:pointer;font-weight:bold;">Create Google Doc</button>
+       </form>`
+    : '';
+
+  const docLink = submission.docUrl
+    ? `<a href="${submission.docUrl}" target="_blank" style="background:#fff;border:2px solid #2a6049;color:#2a6049;padding:9px 18px;border-radius:5px;font-size:14px;font-family:Georgia,serif;font-weight:bold;text-decoration:none;display:inline-block;">Open Google Doc ↗</a>`
+    : '';
+
+  const deliverButton = submission.status === 'draft_ready' && submission.docUrl
     ? `<form method="POST" action="/admin/submission/${submission.id}/mark-delivered" style="display:inline;">
-         <button type="submit" style="background:#2a6049;color:white;border:none;padding:10px 20px;border-radius:5px;font-size:14px;font-family:Georgia,serif;cursor:pointer;font-weight:bold;">Mark as Delivered</button>
+         <button type="submit" style="background:#084298;color:white;border:none;padding:10px 20px;border-radius:5px;font-size:14px;font-family:Georgia,serif;cursor:pointer;font-weight:bold;">Mark as Delivered</button>
        </form>`
     : submission.status === 'delivered'
       ? `<span style="color:#084298;font-weight:bold;font-size:14px;">Delivered</span>`
       : '';
+
+  const actionButtons = `<div style="display:flex;gap:10px;align-items:center;">${createDocButton}${docLink}${deliverButton}</div>`;
 
   res.send(`<!DOCTYPE html>
 <html lang="en">
@@ -326,7 +339,7 @@ app.get('/admin/submission/:id', (req, res) => {
           ${submission.paidAt ? `&nbsp;·&nbsp; Paid ${new Date(submission.paidAt).toLocaleDateString()}` : ''}
         </div>
       </div>
-      <div style="padding-top:4px;">${deliverButton}</div>
+      <div style="padding-top:4px;">${actionButtons}</div>
     </div>
     <div class="section">
       <div class="section-title">Submission Details</div>
@@ -356,6 +369,31 @@ app.get('/admin/submission/:id', (req, res) => {
   </div>
 </body>
 </html>`);
+});
+
+// Create Google Doc for a submission
+app.post('/admin/submission/:id/create-doc', async (req, res) => {
+  const submissions = loadSubmissions();
+  const index = submissions.findIndex(s => s.id === Number(req.params.id));
+
+  if (index === -1) return res.status(404).send('Submission not found.');
+
+  try {
+    console.log(`Creating Google Doc for submission ${req.params.id}...`);
+    const { docUrl, docId, clientFolderId } = await createGrantDoc(submissions[index]);
+
+    submissions[index].docUrl = docUrl;
+    submissions[index].docId = docId;
+    submissions[index].clientFolderId = clientFolderId;
+    submissions[index].docCreatedAt = new Date().toISOString();
+    saveSubmissions(submissions);
+
+    console.log(`Google Doc created: ${docUrl}`);
+  } catch (err) {
+    console.error('Google Doc creation failed:', err.message);
+  }
+
+  res.redirect(`/admin/submission/${req.params.id}`);
 });
 
 app.post('/admin/submission/:id/mark-delivered', (req, res) => {

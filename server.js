@@ -74,6 +74,11 @@ function ensureDataDir() {
 
 // ─── Public routes ────────────────────────────────────────────────────────────
 
+// Serve intake form at /apply
+app.get('/apply', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'apply.html'));
+});
+
 // Receive form, save as pending, redirect to Stripe Checkout
 app.post('/checkout', async (req, res) => {
   const submission = {

@@ -1,15 +1,15 @@
 const { google } = require('googleapis');
 
 function getGoogleAuth() {
-  const credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT);
-
-  return new google.auth.GoogleAuth({
-    credentials,
-    scopes: [
-      'https://www.googleapis.com/auth/drive',
-      'https://www.googleapis.com/auth/documents'
-    ]
+  // OAuth2 with a real user's credentials — files are owned by that user, no quota issues
+  const oauth2Client = new google.auth.OAuth2(
+    process.env.GOOGLE_CLIENT_ID,
+    process.env.GOOGLE_CLIENT_SECRET
+  );
+  oauth2Client.setCredentials({
+    refresh_token: process.env.GOOGLE_REFRESH_TOKEN
   });
+  return oauth2Client;
 }
 
 async function createGrantDoc(submission) {

@@ -5,7 +5,7 @@ const path       = require('path');
 const basicAuth  = require('express-basic-auth');
 const Stripe     = require('stripe');
 const { generateGrant }       = require('./generateGrant');
-const { sendConfirmationEmail, sendDeliveryEmail } = require('./sendEmail');
+const { sendConfirmationEmail, sendDeliveryEmail, sendAdminNotificationEmail } = require('./sendEmail');
 const { createGrantDoc, exportDocAsDocx } = require('./createDoc');
 const {
   pool,
@@ -78,6 +78,10 @@ app.post('/webhook',
 
       sendConfirmationEmail(submission).catch(err => {
         console.error('Confirmation email failed:', submissionId, err.message);
+      });
+
+      sendAdminNotificationEmail(submission).catch(err => {
+        console.error('Admin notification failed:', submissionId, err.message);
       });
 
       console.log('Webhook: generation triggered for', submissionId);
@@ -236,6 +240,10 @@ app.post('/checkout', async (req, res) => {
 
       sendConfirmationEmail(submission).catch(err => {
         console.error('Confirmation email failed (comp):', id, err.message);
+      });
+
+      sendAdminNotificationEmail(submission).catch(err => {
+        console.error('Admin notification failed (comp):', id, err.message);
       });
 
       console.log(`Comp submission processed (${promoCode}): ${id}`);

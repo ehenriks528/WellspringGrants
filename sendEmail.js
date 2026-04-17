@@ -308,4 +308,105 @@ async function sendDeliveryEmail(submission, docxBuffer = null) {
   }
 }
 
-module.exports = { sendConfirmationEmail, sendDeliveryEmail };
+async function sendAdminNotificationEmail(submission) {
+  const deadline = submission.grant_deadline
+    ? new Date(submission.grant_deadline).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+    : '—';
+  const amount = submission.amount_requested
+    ? `$${Number(submission.amount_requested).toLocaleString()}`
+    : '—';
+  const billing = submission.is_comp
+    ? `Complimentary (promo: ${submission.promo_code_used || '—'})`
+    : 'Paid via Stripe';
+  const format = submission.delivery_format === 'word' ? 'Word Document (.docx)' : 'Google Doc';
+  const appUrl = process.env.APP_URL || 'https://wellspringgrants.com';
+  const dashboardUrl = `${appUrl}/admin/submission/${submission.id}`;
+
+  try {
+    await resend.emails.send({
+      from: 'Wellspring Grants <hello@wellspringgrants.com>',
+      to: 'hello@wellspringgrants.com',
+      subject: `New submission: ${submission.org_name} — ${submission.funder_name}`,
+      html: `
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"></head>
+<body style="margin:0;padding:0;background:#f4f1eb;font-family:Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f1eb;padding:32px 20px;">
+    <tr>
+      <td align="center">
+        <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:8px;overflow:hidden;max-width:560px;width:100%;">
+
+          <tr>
+            <td style="background:#1b4332;padding:20px 28px;">
+              <p style="margin:0;font-size:15px;font-weight:bold;color:#ffffff;">Wellspring Grants — New Submission</p>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:28px;">
+              <p style="margin:0 0 20px;font-size:15px;color:#1a1a1a;">A new grant application just came in. Grant generation is underway — check the dashboard to review when it's ready.</p>
+
+              <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e0e0e0;border-radius:5px;margin-bottom:24px;">
+                <tr style="background:#f8f8f8;">
+                  <td style="padding:10px 14px;font-size:12px;font-weight:bold;color:#555;text-transform:uppercase;letter-spacing:0.4px;border-bottom:1px solid #e0e0e0;" colspan="2">Submission Details</td>
+                </tr>
+                <tr>
+                  <td style="padding:9px 14px;font-size:13px;color:#666;border-bottom:1px solid #f0f0f0;width:140px;">Organization</td>
+                  <td style="padding:9px 14px;font-size:13px;color:#1a1a1a;font-weight:bold;border-bottom:1px solid #f0f0f0;">${submission.org_name}</td>
+                </tr>
+                <tr>
+                  <td style="padding:9px 14px;font-size:13px;color:#666;border-bottom:1px solid #f0f0f0;">Funder</td>
+                  <td style="padding:9px 14px;font-size:13px;color:#1a1a1a;font-weight:bold;border-bottom:1px solid #f0f0f0;">${submission.funder_name}</td>
+                </tr>
+                <tr>
+                  <td style="padding:9px 14px;font-size:13px;color:#666;border-bottom:1px solid #f0f0f0;">Grant Program</td>
+                  <td style="padding:9px 14px;font-size:13px;color:#1a1a1a;border-bottom:1px solid #f0f0f0;">${submission.grant_program || '—'}</td>
+                </tr>
+                <tr>
+                  <td style="padding:9px 14px;font-size:13px;color:#666;border-bottom:1px solid #f0f0f0;">Amount</td>
+                  <td style="padding:9px 14px;font-size:13px;color:#1a1a1a;font-weight:bold;border-bottom:1px solid #f0f0f0;">${amount}</td>
+                </tr>
+                <tr>
+                  <td style="padding:9px 14px;font-size:13px;color:#666;border-bottom:1px solid #f0f0f0;">Deadline</td>
+                  <td style="padding:9px 14px;font-size:13px;color:#1a1a1a;border-bottom:1px solid #f0f0f0;">${deadline}</td>
+                </tr>
+                <tr>
+                  <td style="padding:9px 14px;font-size:13px;color:#666;border-bottom:1px solid #f0f0f0;">Contact</td>
+                  <td style="padding:9px 14px;font-size:13px;color:#1a1a1a;border-bottom:1px solid #f0f0f0;">${submission.contact_name} &lt;${submission.contact_email}&gt;</td>
+                </tr>
+                <tr>
+                  <td style="padding:9px 14px;font-size:13px;color:#666;border-bottom:1px solid #f0f0f0;">Delivery Format</td>
+                  <td style="padding:9px 14px;font-size:13px;color:#1a1a1a;border-bottom:1px solid #f0f0f0;">${format}</td>
+                </tr>
+                <tr>
+                  <td style="padding:9px 14px;font-size:13px;color:#666;">Billing</td>
+                  <td style="padding:9px 14px;font-size:13px;color:#1a1a1a;">${billing}</td>
+                </tr>
+              </table>
+
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td align="center">
+                    <a href="${dashboardUrl}" style="display:inline-block;background:#1b4332;color:#ffffff;text-decoration:none;padding:12px 28px;border-radius:5px;font-size:14px;font-weight:bold;">View in Dashboard &rarr;</a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+      `
+    });
+    console.log(`Admin notification sent for submission ${submission.id}`);
+  } catch (err) {
+    console.error(`Admin notification failed for submission ${submission.id}:`, err.message);
+  }
+}
+
+module.exports = { sendConfirmationEmail, sendDeliveryEmail, sendAdminNotificationEmail };

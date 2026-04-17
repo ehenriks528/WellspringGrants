@@ -599,7 +599,7 @@ async function createGrantDoc(submission) {
       updateParagraphStyle: {
         range: { startIndex: coverTitleStart, endIndex: coverTitleEnd + 1 },
         paragraphStyle: {
-          alignment: 'LEFT',
+          alignment: 'START',
           spaceBelow: { magnitude: 8, unit: 'PT' }
         },
         fields: 'alignment,spaceBelow'
@@ -625,7 +625,7 @@ async function createGrantDoc(submission) {
       updateParagraphStyle: {
         range: { startIndex: coverFunderStart, endIndex: coverFunderEnd + 1 },
         paragraphStyle: {
-          alignment: 'LEFT',
+          alignment: 'START',
           spaceBelow: { magnitude: 4, unit: 'PT' }
         },
         fields: 'alignment,spaceBelow'
@@ -666,7 +666,7 @@ async function createGrantDoc(submission) {
     {
       updateParagraphStyle: {
         range: { startIndex: coverMetaStart, endIndex: coverMetaEnd },
-        paragraphStyle: { alignment: 'LEFT', lineSpacing: 130 },
+        paragraphStyle: { alignment: 'START', lineSpacing: 130 },
         fields: 'alignment,lineSpacing'
       }
     }
@@ -692,7 +692,7 @@ async function createGrantDoc(submission) {
             range: { startIndex: job.start, endIndex: job.end + 1 },
             paragraphStyle: {
               namedStyleType: 'HEADING_1',
-              alignment: 'LEFT',
+              alignment: 'START',
               spaceAbove: { magnitude: 12, unit: 'PT' },
               spaceBelow: { magnitude: 6, unit: 'PT' },
               borderBottom: {
@@ -725,7 +725,7 @@ async function createGrantDoc(submission) {
             range: { startIndex: job.start, endIndex: job.end + 1 },
             paragraphStyle: {
               namedStyleType: 'HEADING_2',
-              alignment: 'LEFT',
+              alignment: 'START',
               spaceAbove: { magnitude: 8, unit: 'PT' },
               spaceBelow: { magnitude: 4, unit: 'PT' }
             },

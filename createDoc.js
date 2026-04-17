@@ -568,7 +568,7 @@ async function createGrantDoc(submission) {
       } else {
         // Subsection
         const subLines   = part.split('\n');
-        const subHeading = subLines[0].trim().replace(/\*\*/g, '');  // strip ** from subheadings
+        const subHeading = subLines[0].trim().replace(/\*\*/g, '').replace(/\*/g, '');  // strip ** and * from subheadings
         const subBodyRaw = subLines.slice(1).join('\n').trim();
 
         const shStart = idx;

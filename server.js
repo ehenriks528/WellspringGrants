@@ -142,7 +142,8 @@ app.get('/apply', (req, res) => {
 // Validate a promo code without redeeming it — called by the intake form on blur.
 // Never reveals why a code is invalid beyond the generic message.
 app.get('/validate-promo', async (req, res) => {
-  const code = (req.query.code || '').trim().toUpperCase();
+  const code  = (req.query.code  || '').trim().toUpperCase();
+  const email = (req.query.email || '').trim().toLowerCase();
 
   if (!code) {
     return res.json({ valid: false, message: 'Invalid or expired code' });
@@ -151,10 +152,20 @@ app.get('/validate-promo', async (req, res) => {
   const record = await validatePromoCode(code);
 
   if (record) {
-    return res.json({ valid: true, message: 'Promo code applied — first grant complimentary' });
+    // If an email was provided, check whether it has already used a promo code
+    if (email) {
+      const priorUse = await pool.query(
+        'SELECT COUNT(*) FROM submissions WHERE contact_email = $1 AND promo_code_used IS NOT NULL',
+        [email]
+      );
+      if (parseInt(priorUse.rows[0].count, 10) > 0) {
+        return res.json({ valid: false, already_used: true });
+      }
+    }
+    return res.json({ valid: true });
   }
 
-  res.json({ valid: false, message: 'Invalid or expired code' });
+  res.json({ valid: false });
 });
 
 // Receive form, save as pending_payment, then fork:

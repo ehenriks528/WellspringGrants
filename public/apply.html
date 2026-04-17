@@ -430,7 +430,8 @@
     const priceDisplay  = document.getElementById('price-display');
 
     promoInput.addEventListener('blur', async function () {
-      const code = promoInput.value.trim();
+      const code  = promoInput.value.trim();
+      const email = (document.getElementById('contact_email').value || '').trim();
 
       if (!code) {
         promoFeedback.style.display = 'none';
@@ -440,7 +441,9 @@
       }
 
       try {
-        const res  = await fetch('/validate-promo?code=' + encodeURIComponent(code));
+        let url = '/validate-promo?code=' + encodeURIComponent(code);
+        if (email) url += '&email=' + encodeURIComponent(email);
+        const res  = await fetch(url);
         const data = await res.json();
 
         promoFeedback.style.display = 'block';
@@ -450,6 +453,11 @@
           promoFeedback.textContent = '✓ Promo code applied — first grant complimentary';
           promoValid.value = 'true';
           priceDisplay.textContent = 'Complimentary ($0)';
+        } else if (data.already_used) {
+          promoFeedback.style.color = '#b00020';
+          promoFeedback.textContent = '✗ This code has already been used — standard pricing applies';
+          promoValid.value = 'false';
+          priceDisplay.textContent = '$450';
         } else {
           promoFeedback.style.color = '#b00020';
           promoFeedback.textContent = '✗ Invalid or expired code';

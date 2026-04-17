@@ -8,6 +8,7 @@ const { generateGrant }       = require('./generateGrant');
 const { sendConfirmationEmail, sendDeliveryEmail } = require('./sendEmail');
 const { createGrantDoc }      = require('./createDoc');
 const {
+  pool,
   createSubmission,
   getSubmission,
   updateSubmission,
@@ -197,6 +198,17 @@ app.post('/checkout', async (req, res) => {
     const promoRecord = await validatePromoCode(promoCode);
 
     if (promoRecord) {
+      // One promo use per email address — check if this email has already used any promo code
+      const priorUse = await pool.query(
+        'SELECT COUNT(*) FROM submissions WHERE contact_email = $1 AND promo_code_used IS NOT NULL',
+        [submission.contact_email]
+      );
+      const alreadyUsed = parseInt(priorUse.rows[0].count, 10) > 0;
+
+      if (alreadyUsed) {
+        // Silently fall through to Stripe — no error shown to client
+        console.log(`Promo code blocked for repeat email (${submission.contact_email}), proceeding to Stripe`);
+      } else {
       // Redeem the code and mark the submission as a comp
       await redeemPromoCode(promoCode);
       await updateSubmission(id, {
@@ -217,10 +229,11 @@ app.post('/checkout', async (req, res) => {
 
       console.log(`Comp submission processed (${promoCode}): ${id}`);
       return res.redirect('/confirmation.html');
+      } // end !alreadyUsed
     }
 
-    // Code was submitted but is invalid/expired — fall through to Stripe
-    console.log(`Invalid promo code submitted (${promoCode}), proceeding to Stripe`);
+    // Code was submitted but is invalid/expired/already used — fall through to Stripe
+    console.log(`Promo code not applied (${promoCode}), proceeding to Stripe`);
   }
 
   // ── Stripe path (no code, or invalid code) ─────────────────────────────────

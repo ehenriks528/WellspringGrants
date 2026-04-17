@@ -864,4 +864,14 @@ async function createGrantDoc(submission) {
   return { docUrl, docId, clientFolderId };
 }
 
-module.exports = { createGrantDoc };
+async function exportDocAsDocx(docId) {
+  const auth  = getGoogleAuth();
+  const drive = google.drive({ version: 'v3', auth });
+  const res = await drive.files.export(
+    { fileId: docId, mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' },
+    { responseType: 'arraybuffer' }
+  );
+  return Buffer.from(res.data);
+}
+
+module.exports = { createGrantDoc, exportDocAsDocx };

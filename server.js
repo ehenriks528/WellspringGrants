@@ -6,7 +6,7 @@ const basicAuth  = require('express-basic-auth');
 const Stripe     = require('stripe');
 const { generateGrant }       = require('./generateGrant');
 const { sendConfirmationEmail, sendDeliveryEmail } = require('./sendEmail');
-const { createGrantDoc }      = require('./createDoc');
+const { createGrantDoc, exportDocAsDocx } = require('./createDoc');
 const {
   pool,
   createSubmission,
@@ -674,11 +674,22 @@ app.post('/admin/submission/:id/mark-delivered', async (req, res) => {
     });
   }
 
+  // Export as Word doc if that's what the client requested
+  let docxBuffer = null;
+  if (submission.delivery_format === 'word' && submission.doc_id) {
+    try {
+      docxBuffer = await exportDocAsDocx(submission.doc_id);
+    } catch (err) {
+      console.error(`Word export failed for submission ${req.params.id}:`, err.message);
+      // Fall through — email will still send with Google Doc link
+    }
+  }
+
   const deliveredAt = new Date().toISOString();
 
   let emailSent = false;
   try {
-    await sendDeliveryEmail(submission);
+    await sendDeliveryEmail(submission, docxBuffer);
     emailSent = true;
   } catch (err) {
     console.error(`Delivery email failed for submission ${req.params.id}:`, err.message);

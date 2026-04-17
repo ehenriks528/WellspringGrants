@@ -131,7 +131,7 @@ async function sendConfirmationEmail(submission) {
   }
 }
 
-async function sendDeliveryEmail(submission) {
+async function sendDeliveryEmail(submission, docxBuffer = null) {
   const firstName = (submission.contact_name || '').split(' ')[0] || 'there';
   const deadline = submission.grant_deadline
     ? new Date(submission.grant_deadline).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
@@ -140,12 +140,37 @@ async function sendDeliveryEmail(submission) {
     ? `${parseFloat(submission.quality_score).toFixed(1)} / 10`
     : 'N/A';
 
-  try {
-    await resend.emails.send({
-      from: 'Wellspring Grants <hello@wellspringgrants.com>',
-      to: submission.contact_email,
-      subject: `Your Grant Application Is Ready — ${submission.org_name}`,
-      html: `
+  const isWord = submission.delivery_format === 'word';
+  const filename = `${(submission.org_name || 'Grant Application').replace(/[^a-z0-9]/gi, '_')}_${(submission.funder_name || '').replace(/[^a-z0-9]/gi, '_')}.docx`;
+
+  // Doc access block — attachment note for Word, button for Google Doc
+  const docAccessBlock = isWord && docxBuffer
+    ? `<p style="margin:0 0 24px;font-size:15px;color:#444;line-height:1.7;">Your completed grant application is attached to this email as a Word document (<strong>${filename}</strong>). You can also <a href="${submission.doc_url}" style="color:#2a6049;">open it in Google Docs</a> if you prefer to edit online.</p>`
+    : `<table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:28px;">
+                <tr>
+                  <td align="center">
+                    <a href="${submission.doc_url}" style="display:inline-block;background:#2a6049;color:#ffffff;text-decoration:none;padding:14px 32px;border-radius:5px;font-size:15px;font-weight:bold;letter-spacing:0.3px;">Open Your Grant Application &rarr;</a>
+                  </td>
+                </tr>
+              </table>`;
+
+  // Step 1 copy adapts to format
+  const step1Copy = isWord && docxBuffer
+    ? `<strong>Review the attached Word document</strong> — read through the full application and confirm it accurately represents your organization and project.`
+    : `<strong>Review the document in Google Docs</strong> — read through the full application and confirm it accurately represents your organization and project.`;
+
+  const step2Copy = isWord && docxBuffer
+    ? `<strong>Make any edits directly in the Word file</strong> — open the attachment in Microsoft Word or Google Docs and make changes as needed.`
+    : `<strong>Make any edits directly in the doc</strong> — it's shared with your email, so you can edit it immediately without requesting access.`;
+
+  const emailOptions = {
+    from: 'Wellspring Grants <hello@wellspringgrants.com>',
+    to: submission.contact_email,
+    subject: `Your Grant Application Is Ready — ${submission.org_name}`,
+    attachments: isWord && docxBuffer
+      ? [{ filename, content: docxBuffer }]
+      : undefined,
+    html: `
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -173,14 +198,8 @@ async function sendDeliveryEmail(submission) {
                 Your grant application for <strong>${submission.grant_program || submission.funder_name}</strong> is ready for your review.
               </p>
 
-              <!-- Doc button -->
-              <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:28px;">
-                <tr>
-                  <td align="center">
-                    <a href="${submission.doc_url}" style="display:inline-block;background:#2a6049;color:#ffffff;text-decoration:none;padding:14px 32px;border-radius:5px;font-size:15px;font-weight:bold;letter-spacing:0.3px;">Open Your Grant Application &rarr;</a>
-                  </td>
-                </tr>
-              </table>
+              <!-- Doc access -->
+              ${docAccessBlock}
 
               <!-- Summary box -->
               <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0f7f4;border-left:3px solid #2a6049;border-radius:4px;margin-bottom:28px;">
@@ -221,7 +240,7 @@ async function sendDeliveryEmail(submission) {
                     <span style="background:#2a6049;color:white;border-radius:50%;width:22px;height:22px;display:inline-block;text-align:center;font-size:12px;line-height:22px;font-weight:bold;">1</span>
                   </td>
                   <td style="padding-bottom:12px;vertical-align:top;">
-                    <p style="margin:0;font-size:14px;color:#444;line-height:1.6;"><strong>Review the document in Google Docs</strong> — read through the full application and confirm it accurately represents your organization and project.</p>
+                    <p style="margin:0;font-size:14px;color:#444;line-height:1.6;">${step1Copy}</p>
                   </td>
                 </tr>
                 <tr>
@@ -229,7 +248,7 @@ async function sendDeliveryEmail(submission) {
                     <span style="background:#2a6049;color:white;border-radius:50%;width:22px;height:22px;display:inline-block;text-align:center;font-size:12px;line-height:22px;font-weight:bold;">2</span>
                   </td>
                   <td style="padding-bottom:12px;vertical-align:top;">
-                    <p style="margin:0;font-size:14px;color:#444;line-height:1.6;"><strong>Make any edits directly in the doc</strong> — it's shared with your email, so you can edit it immediately without requesting access.</p>
+                    <p style="margin:0;font-size:14px;color:#444;line-height:1.6;">${step2Copy}</p>
                   </td>
                 </tr>
                 <tr>
@@ -278,9 +297,11 @@ async function sendDeliveryEmail(submission) {
 </body>
 </html>
       `
-    });
+  };
 
-    console.log(`Delivery email sent to ${submission.contact_email}`);
+  try {
+    await resend.emails.send(emailOptions);
+    console.log(`Delivery email sent to ${submission.contact_email} (format: ${submission.delivery_format || 'google_doc'})`);
   } catch (err) {
     console.error(`Delivery email failed for ${submission.contact_email}:`, err.message);
     throw err;

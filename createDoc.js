@@ -86,7 +86,7 @@ function findTableNearIndex(content, target) {
   for (const el of content) {
     if (el.table) {
       const dist = Math.abs(el.startIndex - target);
-      if (dist < bestDist) { bestDist = dist; best = el.table; }
+      if (dist < bestDist) { bestDist = dist; best = el; }
     }
   }
   return bestDist < 30 ? best : null;
@@ -117,8 +117,9 @@ async function insertBudgetTable(docs, docId, tableData) {
 
   // 4. Find table and fill cells (reversed so indices stay stable)
   const snap2 = await docs.documents.get({ documentId: docId });
-  const table = findTableNearIndex(snap2.data.body.content, phIdx);
-  if (!table) return;
+  const tableEl = findTableNearIndex(snap2.data.body.content, phIdx);
+  if (!tableEl) return;
+  const table = tableEl.table;
 
   const insertReqs = [];
   for (let r = 0; r < table.tableRows.length; r++) {
@@ -137,9 +138,11 @@ async function insertBudgetTable(docs, docId, tableData) {
   }
 
   // 5. Style the table
-  const snap3 = await docs.documents.get({ documentId: docId });
-  const t     = findTableNearIndex(snap3.data.body.content, phIdx);
-  if (!t) return;
+  const snap3  = await docs.documents.get({ documentId: docId });
+  const tEl    = findTableNearIndex(snap3.data.body.content, phIdx);
+  if (!tEl) return;
+  const t          = tEl.table;
+  const tStartIndex = tEl.startIndex;
 
   const styleReqs = [];
   const totalRowIdx = t.tableRows.length - 1;
@@ -161,7 +164,7 @@ async function insertBudgetTable(docs, docId, tableData) {
         updateTableCellStyle: {
           tableRange: {
             tableCellLocation: {
-              tableStartLocation: { index: t.startIndex },
+              tableStartLocation: { index: tStartIndex },
               rowIndex: r,
               columnIndex: c
             },

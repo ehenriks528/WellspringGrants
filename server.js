@@ -91,11 +91,31 @@ app.post('/webhook',
   }
 );
 
+// ─── Global error handlers ────────────────────────────────────────────────────
+// Prevent unhandled promise rejections and uncaught exceptions from crashing
+// the process. Log the error so it appears in Railway logs, then keep running.
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled promise rejection:', reason);
+});
+
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught exception:', err.message, err.stack);
+});
+
 // ─── Body parsers (after webhook route) ──────────────────────────────────────
 
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 app.use(express.json({ limit: '1mb' }));
 app.use(express.static('public'));
+
+// ─── Health check ─────────────────────────────────────────────────────────────
+// Railway pings this to confirm the app is alive. Returns instantly without
+// hitting the database, so a slow DB connection never looks like a crash.
+
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', ts: Date.now() });
+});
 
 // ─── Admin auth ───────────────────────────────────────────────────────────────
 

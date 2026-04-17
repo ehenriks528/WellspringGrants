@@ -45,12 +45,24 @@ function stripInlineMarkdown(text) {
   let i = 0;
   while (i < text.length) {
     if (text[i] === '*' && text[i + 1] === '*') {
+      // **bold** — strip markers, record range for bold API styling
       const closeIdx = text.indexOf('**', i + 2);
       if (closeIdx !== -1) {
         const start = clean.length;
         clean += text.slice(i + 2, closeIdx);
         boldRanges.push({ start, end: clean.length });
         i = closeIdx + 2;
+      } else {
+        clean += text[i++];
+      }
+    } else if (text[i] === '*') {
+      // *italic* — strip markers, keep text, no italic styling needed
+      const lineEnd = text.indexOf('\n', i + 1);
+      const searchEnd = lineEnd === -1 ? text.length : lineEnd;
+      const closeIdx = text.indexOf('*', i + 1);
+      if (closeIdx !== -1 && closeIdx <= searchEnd) {
+        clean += text.slice(i + 1, closeIdx);
+        i = closeIdx + 1;
       } else {
         clean += text[i++];
       }
@@ -61,13 +73,12 @@ function stripInlineMarkdown(text) {
   return { text: clean, boldRanges };
 }
 
-// Remove markdown horizontal rules and clean up stray single-star italics.
+// Remove markdown horizontal rules. Inline markers are handled by stripInlineMarkdown.
 function cleanBodyText(text) {
   return text
     .split('\n')
     .filter(line => !/^[-*_]{3,}\s*$/.test(line.trim())) // strip --- / *** / ___
-    .join('\n')
-    .replace(/\*([^*\n]+)\*/g, '$1');  // strip *italic* markers (keep text)
+    .join('\n');
 }
 
 // ── Markdown table parser ─────────────────────────────────────────────────────

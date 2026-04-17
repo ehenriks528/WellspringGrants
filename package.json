@@ -4,7 +4,13 @@
   "description": "AI-powered grant writing web app for small nonprofits",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "dev": "node --env-file=.env.local server.js",
+    "dev:watch": "nodemon --env-file=.env.local server.js",
+    "migrate": "node db/migrate.js",
+    "import": "node db/import-existing.js",
+    "seed": "node --env-file=.env.local db/seed.js",
+    "seed:prod": "node db/seed.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.89.0",
@@ -12,7 +18,11 @@
     "express": "^4.18.2",
     "express-basic-auth": "^1.2.1",
     "googleapis": "^171.4.0",
+    "pg": "^8.20.0",
     "resend": "^6.12.0",
     "stripe": "^22.0.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
   }
 }

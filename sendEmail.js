@@ -131,4 +131,160 @@ async function sendConfirmationEmail(submission) {
   }
 }
 
-module.exports = { sendConfirmationEmail };
+async function sendDeliveryEmail(submission) {
+  const firstName = (submission.contact_name || '').split(' ')[0] || 'there';
+  const deadline = submission.grant_deadline
+    ? new Date(submission.grant_deadline).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+    : 'as specified';
+  const scoreDisplay = submission.quality_score != null
+    ? `${parseFloat(submission.quality_score).toFixed(1)} / 10`
+    : 'N/A';
+
+  try {
+    await resend.emails.send({
+      from: 'Wellspring Grants <hello@wellspringgrants.com>',
+      to: submission.contact_email,
+      subject: `Your Grant Application Is Ready — ${submission.org_name}`,
+      html: `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin:0;padding:0;background:#f4f1eb;font-family:Georgia,serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f1eb;padding:40px 20px;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:8px;overflow:hidden;max-width:600px;width:100%;">
+
+          <!-- Header -->
+          <tr>
+            <td style="background:#2a6049;padding:28px 36px;">
+              <p style="margin:0;font-size:18px;font-weight:bold;color:#ffffff;letter-spacing:0.5px;">Wellspring Grants</p>
+            </td>
+          </tr>
+
+          <!-- Body -->
+          <tr>
+            <td style="padding:36px 36px 28px;">
+              <h1 style="margin:0 0 16px;font-size:22px;color:#1a1a1a;">Your grant application is ready, ${firstName}.</h1>
+              <p style="margin:0 0 24px;font-size:15px;color:#444;line-height:1.7;">
+                Your grant application for <strong>${submission.grant_program || submission.funder_name}</strong> is ready for your review.
+              </p>
+
+              <!-- Doc button -->
+              <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:28px;">
+                <tr>
+                  <td align="center">
+                    <a href="${submission.doc_url}" style="display:inline-block;background:#2a6049;color:#ffffff;text-decoration:none;padding:14px 32px;border-radius:5px;font-size:15px;font-weight:bold;letter-spacing:0.3px;">Open Your Grant Application &rarr;</a>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Summary box -->
+              <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0f7f4;border-left:3px solid #2a6049;border-radius:4px;margin-bottom:28px;">
+                <tr>
+                  <td style="padding:18px 20px;">
+                    <p style="margin:0 0 10px;font-size:12px;font-weight:bold;text-transform:uppercase;letter-spacing:0.5px;color:#2a6049;">Application Summary</p>
+                    <table cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td style="font-size:13px;color:#666;padding-bottom:6px;padding-right:16px;">Organization</td>
+                        <td style="font-size:13px;color:#2c2c2c;font-weight:bold;padding-bottom:6px;">${submission.org_name}</td>
+                      </tr>
+                      <tr>
+                        <td style="font-size:13px;color:#666;padding-bottom:6px;padding-right:16px;">Funder</td>
+                        <td style="font-size:13px;color:#2c2c2c;font-weight:bold;padding-bottom:6px;">${submission.funder_name}</td>
+                      </tr>
+                      <tr>
+                        <td style="font-size:13px;color:#666;padding-bottom:6px;padding-right:16px;">Grant Program</td>
+                        <td style="font-size:13px;color:#2c2c2c;font-weight:bold;padding-bottom:6px;">${submission.grant_program || '—'}</td>
+                      </tr>
+                      <tr>
+                        <td style="font-size:13px;color:#666;padding-bottom:6px;padding-right:16px;">Deadline</td>
+                        <td style="font-size:13px;color:#2c2c2c;font-weight:bold;padding-bottom:6px;">${deadline}</td>
+                      </tr>
+                      <tr>
+                        <td style="font-size:13px;color:#666;padding-right:16px;">Quality Score</td>
+                        <td style="font-size:13px;color:#2c2c2c;font-weight:bold;">${scoreDisplay}</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Next steps -->
+              <h2 style="margin:0 0 14px;font-size:16px;color:#1a1a1a;">Next steps</h2>
+              <table cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
+                <tr>
+                  <td style="padding-bottom:12px;padding-right:12px;vertical-align:top;">
+                    <span style="background:#2a6049;color:white;border-radius:50%;width:22px;height:22px;display:inline-block;text-align:center;font-size:12px;line-height:22px;font-weight:bold;">1</span>
+                  </td>
+                  <td style="padding-bottom:12px;vertical-align:top;">
+                    <p style="margin:0;font-size:14px;color:#444;line-height:1.6;"><strong>Review the document in Google Docs</strong> — read through the full application and confirm it accurately represents your organization and project.</p>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding-bottom:12px;padding-right:12px;vertical-align:top;">
+                    <span style="background:#2a6049;color:white;border-radius:50%;width:22px;height:22px;display:inline-block;text-align:center;font-size:12px;line-height:22px;font-weight:bold;">2</span>
+                  </td>
+                  <td style="padding-bottom:12px;vertical-align:top;">
+                    <p style="margin:0;font-size:14px;color:#444;line-height:1.6;"><strong>Make any edits directly in the doc</strong> — it's shared with your email, so you can edit it immediately without requesting access.</p>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding-right:12px;vertical-align:top;">
+                    <span style="background:#2a6049;color:white;border-radius:50%;width:22px;height:22px;display:inline-block;text-align:center;font-size:12px;line-height:22px;font-weight:bold;">3</span>
+                  </td>
+                  <td style="vertical-align:top;">
+                    <p style="margin:0;font-size:14px;color:#444;line-height:1.6;"><strong>Submit to ${submission.funder_name} by ${deadline}</strong> — follow the funder's submission instructions and use this document as your application.</p>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Before you submit -->
+              <table width="100%" cellpadding="0" cellspacing="0" style="background:#fffef8;border:1px solid #e8e4dc;border-radius:4px;margin-bottom:24px;">
+                <tr>
+                  <td style="padding:16px 20px;">
+                    <p style="margin:0 0 10px;font-size:13px;font-weight:bold;color:#1a1a1a;">Before You Submit</p>
+                    <p style="margin:0 0 6px;font-size:13px;color:#444;line-height:1.6;">&#8226; Confirm your EIN appears correctly throughout the application</p>
+                    <p style="margin:0 0 6px;font-size:13px;color:#444;line-height:1.6;">&#8226; Attach your 501(c)(3) determination letter to your submission</p>
+                    <p style="margin:0;font-size:13px;color:#444;line-height:1.6;">&#8226; Attach your most recent Form 990</p>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin:0;font-size:14px;color:#666;line-height:1.7;">
+                Questions? Reply to this email and Emily will get back to you within 24 hours.
+              </p>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="padding:20px 36px 28px;border-top:1px solid #f0ede6;">
+              <p style="margin:0;font-size:13px;color:#999;line-height:1.6;">
+                <a href="mailto:hello@wellspringgrants.com" style="color:#2a6049;">hello@wellspringgrants.com</a>
+                &nbsp;&nbsp;|&nbsp;&nbsp;
+                <a href="https://wellspringgrants.com" style="color:#2a6049;">wellspringgrants.com</a>
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+      `
+    });
+
+    console.log(`Delivery email sent to ${submission.contact_email}`);
+  } catch (err) {
+    console.error(`Delivery email failed for ${submission.contact_email}:`, err.message);
+    throw err;
+  }
+}
+
+module.exports = { sendConfirmationEmail, sendDeliveryEmail };

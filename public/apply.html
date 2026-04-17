@@ -232,6 +232,36 @@
       </div>
 
       <div class="form-group">
+        <label for="ein">EIN (Employer Identification Number) <span class="required-star">*</span></label>
+        <p class="hint">Your 9-digit federal tax ID as it appears on your IRS determination letter</p>
+        <input type="text" id="ein" name="ein" placeholder="e.g. 12-3456789" pattern="[0-9]{2}-[0-9]{7}" title="EIN must be in the format XX-XXXXXXX (two digits, a dash, then seven digits — e.g. 12-3456789)" required>
+      </div>
+
+      <div class="form-group">
+        <label>Authorized Signer <span class="required-star">*</span></label>
+        <p class="hint">The person authorized to submit grant applications on behalf of your organization (typically Executive Director or Board Chair)</p>
+        <div class="row">
+          <input type="text" id="signer_name" name="signer_name" placeholder="Full Legal Name" required>
+          <input type="text" id="signer_title" name="signer_title" placeholder="Title (e.g. Executive Director)" required>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="org_phone">Organization Phone Number <span class="required-star">*</span></label>
+        <input type="tel" id="org_phone" name="org_phone" placeholder="e.g. (512) 555-0100" required>
+      </div>
+
+      <div class="form-group">
+        <label>Full Mailing Address <span class="required-star">*</span></label>
+        <input type="text" id="org_street" name="org_street" placeholder="Street Address" style="margin-bottom:10px;" required>
+        <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:12px;">
+          <input type="text" id="org_city" name="org_city" placeholder="City" required>
+          <input type="text" id="org_state" name="org_state" placeholder="State" required>
+          <input type="text" id="org_zip" name="org_zip" placeholder="ZIP" pattern="[0-9]{5}(-[0-9]{4})?" title="Enter a 5-digit ZIP code" required>
+        </div>
+      </div>
+
+      <div class="form-group">
         <label for="org_location">City / State <span class="required-star">*</span></label>
         <input type="text" id="org_location" name="org_location" placeholder="e.g. Portland, OR" required>
       </div>
@@ -314,9 +344,9 @@
           <input type="number" id="amount_requested" name="amount_requested" placeholder="e.g. 25000" min="0" required>
         </div>
         <div class="form-group">
-          <label for="annual_budget">Annual Operating Budget ($)</label>
-          <p class="hint" style="margin-bottom:8px;">Some funders ask for this.</p>
-          <input type="number" id="annual_budget" name="annual_budget" placeholder="e.g. 180000" min="0">
+          <label for="annual_budget">Annual Operating Budget ($) <span class="required-star">*</span></label>
+          <p class="hint" style="margin-bottom:8px;">This figure must exactly match your most recent Form 990 or audited financial statement. Mismatches are a common cause of disqualification.</p>
+          <input type="number" id="annual_budget" name="annual_budget" placeholder="e.g. 180000" min="0" required>
         </div>
       </div>
 
@@ -348,6 +378,16 @@
         </div>
       </div>
 
+      <div class="form-group" id="promo-group">
+        <label for="promo_code">Promo Code <span style="font-weight:normal;color:#666">(optional)</span></label>
+        <input type="text" id="promo_code" name="promo_code"
+          placeholder="Enter promo code if you have one"
+          style="text-transform:uppercase"
+          autocomplete="off">
+        <div id="promo-feedback" style="margin-top:6px;font-size:13px;display:none"></div>
+      </div>
+      <input type="hidden" id="promo_valid" name="promo_valid" value="false">
+
       <div class="form-group">
         <label for="referral_source">How Did You Hear About Us?</label>
         <select id="referral_source" name="referral_source">
@@ -371,7 +411,7 @@
           <strong style="font-size:15px;">Single Grant Application</strong>
           <div style="font-size:13px;color:#555;margin-top:2px;">Delivered within 48 hours as a Google Doc or Word file</div>
         </div>
-        <div style="font-size:22px;font-weight:bold;color:#2a6049;">$450</div>
+        <div id="price-display" style="font-size:22px;font-weight:bold;color:#2a6049;">$450</div>
       </div>
 
       <button type="submit">Continue to Payment &rarr;</button>
@@ -382,5 +422,46 @@
       </p>
     </form>
   </div>
+
+  <script>
+    const promoInput    = document.getElementById('promo_code');
+    const promoFeedback = document.getElementById('promo-feedback');
+    const promoValid    = document.getElementById('promo_valid');
+    const priceDisplay  = document.getElementById('price-display');
+
+    promoInput.addEventListener('blur', async function () {
+      const code = promoInput.value.trim();
+
+      if (!code) {
+        promoFeedback.style.display = 'none';
+        promoValid.value = 'false';
+        priceDisplay.textContent = '$450';
+        return;
+      }
+
+      try {
+        const res  = await fetch('/validate-promo?code=' + encodeURIComponent(code));
+        const data = await res.json();
+
+        promoFeedback.style.display = 'block';
+
+        if (data.valid) {
+          promoFeedback.style.color = '#0a6640';
+          promoFeedback.textContent = '✓ Promo code applied — first grant complimentary';
+          promoValid.value = 'true';
+          priceDisplay.textContent = 'Complimentary ($0)';
+        } else {
+          promoFeedback.style.color = '#b00020';
+          promoFeedback.textContent = '✗ Invalid or expired code';
+          promoValid.value = 'false';
+          priceDisplay.textContent = '$450';
+        }
+      } catch (err) {
+        promoFeedback.style.display = 'none';
+        promoValid.value = 'false';
+        priceDisplay.textContent = '$450';
+      }
+    });
+  </script>
 </body>
 </html>

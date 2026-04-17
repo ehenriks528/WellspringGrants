@@ -34,6 +34,42 @@ function getGoogleAuth() {
   return oauth2Client;
 }
 
+// ── Inline markdown stripper ─────────────────────────────────────────────────
+// Strips **bold** markers from text and returns the clean string plus the
+// character ranges (relative to the start of the returned string) that should
+// receive bold formatting via the Google Docs API.
+
+function stripInlineMarkdown(text) {
+  const boldRanges = [];
+  let clean = '';
+  let i = 0;
+  while (i < text.length) {
+    if (text[i] === '*' && text[i + 1] === '*') {
+      const closeIdx = text.indexOf('**', i + 2);
+      if (closeIdx !== -1) {
+        const start = clean.length;
+        clean += text.slice(i + 2, closeIdx);
+        boldRanges.push({ start, end: clean.length });
+        i = closeIdx + 2;
+      } else {
+        clean += text[i++];
+      }
+    } else {
+      clean += text[i++];
+    }
+  }
+  return { text: clean, boldRanges };
+}
+
+// Remove markdown horizontal rules and clean up stray single-star italics.
+function cleanBodyText(text) {
+  return text
+    .split('\n')
+    .filter(line => !/^[-*_]{3,}\s*$/.test(line.trim())) // strip --- / *** / ___
+    .join('\n')
+    .replace(/\*([^*\n]+)\*/g, '$1');  // strip *italic* markers (keep text)
+}
+
 // ── Markdown table parser ─────────────────────────────────────────────────────
 
 function parseMarkdownTable(text) {
@@ -490,7 +526,7 @@ async function createGrantDoc(submission) {
 
   for (const section of rawSections) {
     const lines   = section.split('\n');
-    const heading = lines[0].trim();
+    const heading = lines[0].trim().replace(/\*\*/g, '');  // strip ** from headings
     const rawBody = lines.slice(1).join('\n').trim();
 
     // Extract markdown table from this section if not yet found
@@ -518,17 +554,22 @@ async function createGrantDoc(submission) {
       if (!part.trim()) continue;
 
       if (i === 0) {
-        // Plain body text
-        const bodyText = part.trim();
-        if (bodyText) {
-          fullText += bodyText + '\n\n';
-          idx += bodyText.length + 2;
+        // Plain body text — strip markdown artifacts and track bold ranges
+        const cleaned = cleanBodyText(part.trim());
+        if (cleaned) {
+          const { text: cleanText, boldRanges } = stripInlineMarkdown(cleaned);
+          const bodyStart = idx;
+          for (const br of boldRanges) {
+            styleJobs.push({ type: 'bold', start: bodyStart + br.start, end: bodyStart + br.end });
+          }
+          fullText += cleanText + '\n\n';
+          idx += cleanText.length + 2;
         }
       } else {
         // Subsection
         const subLines   = part.split('\n');
-        const subHeading = subLines[0].trim();
-        const subBody    = subLines.slice(1).join('\n').trim();
+        const subHeading = subLines[0].trim().replace(/\*\*/g, '');  // strip ** from subheadings
+        const subBodyRaw = subLines.slice(1).join('\n').trim();
 
         const shStart = idx;
         const shEnd   = idx + subHeading.length;
@@ -536,9 +577,15 @@ async function createGrantDoc(submission) {
         fullText += subHeading + '\n\n';
         idx += subHeading.length + 2;
 
-        if (subBody) {
-          fullText += subBody + '\n\n';
-          idx += subBody.length + 2;
+        if (subBodyRaw) {
+          const cleaned = cleanBodyText(subBodyRaw);
+          const { text: cleanText, boldRanges } = stripInlineMarkdown(cleaned);
+          const bodyStart = idx;
+          for (const br of boldRanges) {
+            styleJobs.push({ type: 'bold', start: bodyStart + br.start, end: bodyStart + br.end });
+          }
+          fullText += cleanText + '\n\n';
+          idx += cleanText.length + 2;
         }
       }
     }
@@ -748,6 +795,14 @@ async function createGrantDoc(submission) {
           }
         }
       );
+    } else if (job.type === 'bold') {
+      styleRequests.push({
+        updateTextStyle: {
+          range: { startIndex: job.start, endIndex: job.end },
+          textStyle: { bold: true },
+          fields: 'bold'
+        }
+      });
     }
   }
 

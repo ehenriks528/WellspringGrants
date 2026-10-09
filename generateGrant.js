@@ -10,9 +10,22 @@ async function fetchGuidelinesText(url) {
       signal: AbortSignal.timeout(8000),
       headers: { 'User-Agent': 'Mozilla/5.0 (compatible; WellspringGrants/1.0)' }
     });
+
+    // Many RFPs link directly to a PDF. We have no PDF text extraction —
+    // running the HTML-tag-stripper below on raw PDF bytes produces
+    // garbled pseudo-text that looks like real content but isn't, which
+    // is worse than having no guidelines text at all. Bail out so the
+    // caller falls back to the "no guidelines fetched" flag instead.
+    const contentType = response.headers.get('content-type') || '';
+    if (contentType.includes('application/pdf') || url.toLowerCase().endsWith('.pdf')) {
+      return null;
+    }
+
     const html = await response.text();
     const text = html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
-    return text.slice(0, 3000);
+    // 12,000 chars (~3x the previous cap) so real RFP priority language
+    // further down the page isn't cut off by nav/header boilerplate.
+    return text.slice(0, 12000);
   } catch {
     return null;
   }
@@ -24,8 +37,8 @@ function buildPrompt(submission, guidelinesText) {
   const budgetFormatted = submission.annual_budget ? `$${Number(submission.annual_budget).toLocaleString()}` : null;
 
   const funderContext = guidelinesText
-    ? `Here is text pulled from the funder's grant guidelines page:\n\n"${guidelinesText}"\n\nBefore writing, extract the funder's top 3 stated priorities from this text and list them in the QA Report's Funder Priority Alignment section. Use the funder's own language. Each major section — Statement of Need, Project Description, and Goals and Objectives — must explicitly reference at least one of these priorities using the funder's own words.`
-    : `⚠️ FLAG: No guidelines URL was successfully fetched. Note this in the QA Report. Use your knowledge of ${submission.funder_name} and the grant program "${submission.grant_program}" to align the application as best as possible, but flag that human review of funder alignment is required.`;
+    ? `Here is text pulled from the funder's grant guidelines page:\n\n"${guidelinesText}"\n\nBefore writing, extract the funder's top 3 stated priorities from this text and list them in the QA Report's Funder Priority Alignment section. Use the funder's own language. Each major section — Statement of Need, Project Description, and Goals and Objectives — must explicitly reference at least one of these priorities using the funder's own words.\n\nAlso scan this text for a stated minimum/maximum award amount or typical grant size. If one is stated, report it in the QA Report's Funder Award Range Check section (see Rule 19). If none is stated, say so — do not infer or estimate a figure that isn't in the text.`
+    : `⚠️ FLAG: No guidelines URL was successfully fetched. Note this in the QA Report. Use your knowledge of ${submission.funder_name} and the grant program "${submission.grant_program}" to align the application as best as possible, but flag that human review of funder alignment is required. Funder Award Range Check (Rule 19) cannot be completed — note this in the QA Report.`;
 
   const specialReqs = submission.special_requirements
     ? `The funder has the following special requirements — follow them precisely:\n${submission.special_requirements}`
@@ -74,6 +87,9 @@ EIN: ${submission.ein || 'Not provided'}
 Authorized Signer: ${submission.signer_name || 'Not provided'} — ${submission.signer_title || ''}
 501(c)(3) Status: ${submission.tax_exempt}
 Mission: ${submission.mission}
+Years in Operation: ${submission.years_operating || 'Not provided'}
+Track Record: ${submission.track_record || 'Not provided'}
+Key Staff & Board Credentials: ${submission.key_staff_credentials || 'Not provided'}
 ${budgetFormatted ? `Annual Operating Budget: ${budgetFormatted}` : ''}
 
 ---
@@ -86,6 +102,8 @@ Project Description: ${submission.project_description}
 Who We Serve: ${submission.target_population}
 
 Expected Outcomes: ${submission.expected_outcomes}
+
+Sustainability Plan Context: ${submission.sustainability_plan || 'Not provided'}
 
 Budget Breakdown: ${submission.budget_breakdown}
 
@@ -143,6 +161,8 @@ REQUIRED ATTACHMENTS:
 17. AUTHORIZED SIGNER BLOCK: Every grant must end with a Signature Block section (after Sustainability Plan) containing: Authorized Signer Name, Title, Organization, Date (blank line), and EIN. Pre-fill from intake data. Use "[ENTER NAME]" / "[ENTER TITLE]" / "[ENTER EIN]" for missing fields. List all placeholders in QA Report.
 
 18. OPENING STORY UNIQUENESS TEST: After writing the human story sentence, verify: Could this exact sentence appear in ANY other nonprofit's grant? If yes, rewrite it with a detail that is only true of this specific organization or zip code. If rewritten, note in QA Report: ⚠️ STORY OPENING REVISED FOR SPECIFICITY.
+
+19. FUNDER AWARD RANGE CHECK: If the funder guidelines text states a minimum/maximum award amount or typical grant size, compare it to ${amountFormatted}. If the request falls clearly outside that stated range, add to QA Report: ⚠️ REQUEST OUTSIDE FUNDER'S STATED AWARD RANGE — funder states [range], this request is [amount]. If no range is stated, or no guidelines text was available, report that plainly in the QA Report — do not invent or estimate a range.
 
 ---
 
@@ -271,7 +291,7 @@ Write the following sections in order. First person plural ("we", "our organizat
 (150–200 words. Open with the human story sentence. Then: the problem, our organization, the project, and the ask of ${amountFormatted}.)
 
 ## Organizational Background
-(200–300 words. Mission, community role, years of operation, capacity to deliver.)
+(200–300 words. Mission, community role, years of operation, capacity to deliver. Use the Years in Operation, Track Record, and Key Staff & Board Credentials provided above as the factual basis for capacity claims — do not invent accomplishments or credentials beyond what was provided. If Track Record was "Not provided," write the section from the mission and project description only, and add to QA Report: ⚠️ CLIENT INPUT REQUIRED: Organizational Background — no track record provided — "What are 2-3 concrete past accomplishments we can cite to establish your organization's capacity?")
 
 ## Statement of Need
 (250–400 words. Why this problem matters, why it is urgent, local data. Reference at least one funder priority explicitly.)
@@ -297,7 +317,7 @@ Add a final row: | **TOTAL** | | **${amountFormatted}** |
 End with one sentence confirming the total equals ${amountFormatted}.
 
 ## Sustainability Plan
-(150–200 words. How this work continues after the grant period. Name specific revenue sources, partnerships, or capacity-building plans.)
+(150–200 words. How this work continues after the grant period. Use the Sustainability Plan Context provided above as the factual basis — name only the specific revenue sources, partnerships, or capacity-building plans given there. Do not invent sources beyond what was provided. If Sustainability Plan Context was "Not provided," write a brief placeholder section and add to QA Report: ⚠️ CLIENT INPUT REQUIRED: Sustainability Plan — no sustainability information provided — "What specific revenue sources, partnerships, or plans will keep this work going after the grant period ends?")
 
 ## Signature Block
 
@@ -339,6 +359,9 @@ WEB-SOURCED INFORMATION:
 
 FUNDER PRIORITY ALIGNMENT:
 [List the top 3 priorities identified from guidelines using funder's exact language. For each: which grant section references it and the exact quote used.]
+
+FUNDER AWARD RANGE CHECK:
+[If a stated range was found: "Funder states [range]. This request ([${amountFormatted}]) is [within range / outside range — flagged]." If no range was stated or no guidelines text was available: "No funder award range stated — could not be checked."]
 
 FUNDING CASE STRESS TEST:
 [3-sentence max: the single strongest case for why this funder should fund this org over all others, using specific numbers and community context.]

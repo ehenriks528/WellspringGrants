@@ -232,6 +232,24 @@
       </div>
 
       <div class="form-group">
+        <label for="years_operating">Years in Operation <span class="required-star">*</span></label>
+        <p class="hint">How many years has your organization been operating?</p>
+        <input type="number" id="years_operating" name="years_operating" placeholder="e.g. 8" min="0" required>
+      </div>
+
+      <div class="form-group">
+        <label for="track_record">Track Record <span class="required-star">*</span></label>
+        <p class="hint">2–3 concrete past accomplishments or completed projects. Use numbers where you can — this is what funders check your capacity against.</p>
+        <textarea id="track_record" name="track_record" placeholder="e.g. Delivered 12,000 meals in 2025; expanded from 1 to 3 counties since 2022; completed a $40,000 USDA grant on time and under budget." required></textarea>
+      </div>
+
+      <div class="form-group">
+        <label for="key_staff_credentials">Key Staff & Board Credentials <span style="font-weight:normal;color:#666">(optional)</span></label>
+        <p class="hint">Brief relevant experience of your Executive Director, key program staff, or notable board members.</p>
+        <textarea id="key_staff_credentials" name="key_staff_credentials" placeholder="e.g. Executive Director has 15 years in public health administration; board includes a CPA and a former county health commissioner."></textarea>
+      </div>
+
+      <div class="form-group">
         <label for="ein">EIN (Employer Identification Number) <span class="required-star">*</span></label>
         <p class="hint">Your 9-digit federal tax ID as it appears on your IRS determination letter</p>
         <input type="text" id="ein" name="ein" placeholder="e.g. 12-3456789" pattern="[0-9]{2}-[0-9]{7}" title="EIN must be in the format XX-XXXXXXX (two digits, a dash, then seven digits — e.g. 12-3456789)" required>
@@ -333,6 +351,12 @@
         <label for="expected_outcomes">Expected Outcomes <span class="required-star">*</span></label>
         <p class="hint">What measurable results do you expect? Numbers help (e.g. "serve 200 people").</p>
         <textarea id="expected_outcomes" name="expected_outcomes" placeholder="e.g. Deliver 500 produce boxes per month; reduce food insecurity for 400 households." required></textarea>
+      </div>
+
+      <div class="form-group">
+        <label for="sustainability_plan">Sustainability Plan <span class="required-star">*</span></label>
+        <p class="hint">What specific revenue sources, partnerships, or plans will keep this work going after the grant period ends?</p>
+        <textarea id="sustainability_plan" name="sustainability_plan" placeholder="e.g. A local credit union has committed to a $5,000 annual sponsorship starting year two; we plan to add a sliding-scale fee for higher-income participants." required></textarea>
       </div>
 
       <hr class="section-divider">

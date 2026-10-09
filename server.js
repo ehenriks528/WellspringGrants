@@ -566,8 +566,12 @@ app.get('/admin/submission/:id', async (req, res) => {
         <div class="field"><label>Phone</label><p>${submission.org_phone || '—'}</p></div>
         <div class="field field-full"><label>Address</label><p>${submission.org_street || ''} ${submission.org_city || ''}, ${submission.org_state || ''} ${submission.org_zip || ''}</p></div>
         <div class="field field-full"><label>Guidelines URL</label><p><a href="${submission.guidelines_url}" target="_blank" style="color:#2a6049;">${submission.guidelines_url || '—'}</a></p></div>
+        <div class="field"><label>Years in Operation</label><p>${submission.years_operating ?? '—'}</p></div>
+        <div class="field field-full"><label>Track Record</label><p>${submission.track_record || '—'}</p></div>
+        <div class="field field-full"><label>Key Staff & Board Credentials</label><p>${submission.key_staff_credentials || '—'}</p></div>
         <div class="field field-full"><label>Problem Statement</label><p>${submission.problem_statement || '—'}</p></div>
         <div class="field field-full"><label>Project Description</label><p>${submission.project_description || '—'}</p></div>
+        <div class="field field-full"><label>Sustainability Plan</label><p>${submission.sustainability_plan || '—'}</p></div>
         <div class="field field-full"><label>Budget Breakdown</label><p>${submission.budget_breakdown || '—'}</p></div>
         ${submission.is_comp
           ? `<div class="field field-full"><label>Billing</label><p style="color:#0a3622;font-weight:bold;">Complimentary submission (promo code: ${submission.promo_code_used || '—'})</p></div>`

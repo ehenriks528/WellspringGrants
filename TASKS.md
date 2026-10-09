@@ -190,6 +190,23 @@
           delivery email received by client. All stages 
           confirmed working in production.
 
+- [x] 25. Grant engine improvements from winning-proposal research
+          (Oct 2026). Added 4 intake fields (years_operating,
+          track_record, key_staff_credentials, sustainability_plan)
+          so Organizational Background and Sustainability Plan
+          sections use real client data instead of inferring it.
+          Fixed guidelines fetch: raised 3,000→12,000 char cap,
+          added PDF-response detection to stop binary PDFs being
+          mangled into fake "guidelines text." Added Rule 19 —
+          Funder Award Range Check — comparing amount requested to
+          any award range stated in the funder's guidelines.
+          Files: db/schema.sql, public/apply.html, generateGrant.js,
+          server.js (admin detail view), claude.md.
+          Research-backed but not yet built this session: 990-PF
+          foundation giving-history lookup, letters-of-support QA
+          section, separate adversarial critique pass — see chat
+          for full prioritized list if revisited.
+
 ---
 
 ## ⚠️ PENDING VERIFICATION
@@ -214,7 +231,7 @@
 |---------------------------|-----------------|------------------------------|
 | Intake form submission    | ✅ Complete      | All fields including EIN     |
 | Payment collection        | ✅ Complete      | Stripe Checkout + webhook    |
-| Grant generation          | ✅ Complete      | 18 rules, 8.6 threshold      |
+| Grant generation          | ✅ Complete      | 19 rules, 8.6 threshold      |
 | QA engine                 | ✅ Complete      | 6-dimension scoring          |
 | Document separation       | ✅ Complete      | Grant body vs QA report      |
 | Google Docs export        | ✅ Complete      | Formatting pipeline live     |

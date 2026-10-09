@@ -260,7 +260,9 @@ Governs the paid writing service only. Unchanged.
 generateGrant.js contains the core business logic.
 Never modify these as a side effect of any other task:
 
-- 18 Mandatory Writing Rules (Rules 1–18)
+- 19 Mandatory Writing Rules (Rules 1–19; Rule 19 — Funder Award Range
+  Check — added Oct 2026 after a deep-research pass on winning grant
+  proposal tactics)
 - 6-dimension weighted quality scoring rubric
 - Self-improvement loop: max 3 revision cycles, threshold 8.6
 - Client Input Required protocol (triggers if score < 8.6 after 3 cycles)

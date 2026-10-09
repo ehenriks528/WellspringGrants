@@ -14,6 +14,9 @@ CREATE TABLE IF NOT EXISTS submissions (
   org_zip VARCHAR(10),
   org_location TEXT,
   tax_exempt VARCHAR(20),
+  years_operating INTEGER,
+  track_record TEXT,
+  key_staff_credentials TEXT,
   funder_name TEXT,
   grant_program TEXT,
   guidelines_url TEXT,
@@ -23,6 +26,7 @@ CREATE TABLE IF NOT EXISTS submissions (
   project_description TEXT,
   target_population TEXT,
   expected_outcomes TEXT,
+  sustainability_plan TEXT,
   budget_breakdown TEXT,
   amount_requested NUMERIC,
   annual_budget NUMERIC,
@@ -48,6 +52,15 @@ CREATE TABLE IF NOT EXISTS submissions (
   delivered_at TIMESTAMPTZ,
   error TEXT
 );
+
+-- Columns added after initial launch — IF NOT EXISTS so this is safe to
+-- re-run against the live production database via `npm run migrate`,
+-- which already has the submissions table and would otherwise skip the
+-- CREATE TABLE above entirely.
+ALTER TABLE submissions ADD COLUMN IF NOT EXISTS years_operating INTEGER;
+ALTER TABLE submissions ADD COLUMN IF NOT EXISTS track_record TEXT;
+ALTER TABLE submissions ADD COLUMN IF NOT EXISTS key_staff_credentials TEXT;
+ALTER TABLE submissions ADD COLUMN IF NOT EXISTS sustainability_plan TEXT;
 
 CREATE TABLE IF NOT EXISTS promo_codes (
   code VARCHAR(50) PRIMARY KEY,

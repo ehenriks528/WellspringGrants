@@ -1,6 +1,13 @@
 const { Resend } = require('resend');
+const { escape: escapeHtml } = require('./acquisition/validation');
 
 const resend = new Resend(process.env.RESEND_API_KEY);
+
+async function sendChecked(options) {
+  const result = await resend.emails.send(options);
+  if (result.error || !result.data?.id) throw new Error('Email provider did not accept message');
+  return result;
+}
 
 async function sendConfirmationEmail(submission) {
   const deliveryFormat = submission.delivery_format === 'word' ? 'Word Document (.docx)' : 'Google Doc';
@@ -9,10 +16,10 @@ async function sendConfirmationEmail(submission) {
     : 'as specified';
 
   try {
-    await resend.emails.send({
+    await sendChecked({
       from: 'Wellspring Grants <hello@wellspringgrants.com>',
       to: submission.contact_email,
-      subject: `We received your grant application — ${submission.funder_name}`,
+      subject: `We received your grant application — ${escapeHtml(submission.funder_name)}`,
       html: `
 <!DOCTYPE html>
 <html lang="en">
@@ -49,15 +56,15 @@ async function sendConfirmationEmail(submission) {
                     <table cellpadding="0" cellspacing="0">
                       <tr>
                         <td style="font-size:13px;color:#666;padding-bottom:6px;padding-right:16px;">Organization</td>
-                        <td style="font-size:13px;color:#2c2c2c;font-weight:bold;padding-bottom:6px;">${submission.org_name}</td>
+                        <td style="font-size:13px;color:#2c2c2c;font-weight:bold;padding-bottom:6px;">${escapeHtml(submission.org_name)}</td>
                       </tr>
                       <tr>
                         <td style="font-size:13px;color:#666;padding-bottom:6px;padding-right:16px;">Funder</td>
-                        <td style="font-size:13px;color:#2c2c2c;font-weight:bold;padding-bottom:6px;">${submission.funder_name}</td>
+                        <td style="font-size:13px;color:#2c2c2c;font-weight:bold;padding-bottom:6px;">${escapeHtml(submission.funder_name)}</td>
                       </tr>
                       <tr>
                         <td style="font-size:13px;color:#666;padding-bottom:6px;padding-right:16px;">Grant Program</td>
-                        <td style="font-size:13px;color:#2c2c2c;font-weight:bold;padding-bottom:6px;">${submission.grant_program}</td>
+                        <td style="font-size:13px;color:#2c2c2c;font-weight:bold;padding-bottom:6px;">${escapeHtml(submission.grant_program)}</td>
                       </tr>
                       <tr>
                         <td style="font-size:13px;color:#666;padding-bottom:6px;padding-right:16px;">Grant Deadline</td>
@@ -101,7 +108,7 @@ async function sendConfirmationEmail(submission) {
               </table>
 
               <p style="margin:0 0 8px;font-size:14px;color:#666;line-height:1.7;">
-                If we have any questions about your project before we begin, we'll reach out to you at <strong>${submission.contact_email}</strong>.
+                If we have any questions about your project before we begin, we'll reach out to you at <strong>${escapeHtml(submission.contact_email)}</strong>.
               </p>
             </td>
           </tr>
@@ -124,10 +131,11 @@ async function sendConfirmationEmail(submission) {
       `
     });
 
-    console.log(`Confirmation email sent to ${submission.contact_email}`);
+    console.log(`Confirmation email sent to ${escapeHtml(submission.contact_email)}`);
   } catch (err) {
     // Email failure should never block the main flow
-    console.error(`Email failed for ${submission.contact_email}:`, err.message);
+    console.error(`Email failed for submission ${escapeHtml(submission.id)}`);
+    throw err;
   }
 }
 
@@ -145,11 +153,11 @@ async function sendDeliveryEmail(submission, docxBuffer = null) {
 
   // Doc access block — attachment note for Word, button for Google Doc
   const docAccessBlock = isWord && docxBuffer
-    ? `<p style="margin:0 0 24px;font-size:15px;color:#444;line-height:1.7;">Your completed grant application is attached to this email as a Word document (<strong>${filename}</strong>). You can also <a href="${submission.doc_url}" style="color:#2a6049;">open it in Google Docs</a> if you prefer to edit online.</p>`
+    ? `<p style="margin:0 0 24px;font-size:15px;color:#444;line-height:1.7;">Your completed grant application is attached to this email as a Word document (<strong>${filename}</strong>). You can also <a href="${escapeHtml(submission.doc_url)}" style="color:#2a6049;">open it in Google Docs</a> if you prefer to edit online.</p>`
     : `<table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:28px;">
                 <tr>
                   <td align="center">
-                    <a href="${submission.doc_url}" style="display:inline-block;background:#2a6049;color:#ffffff;text-decoration:none;padding:14px 32px;border-radius:5px;font-size:15px;font-weight:bold;letter-spacing:0.3px;">Open Your Grant Application &rarr;</a>
+                    <a href="${escapeHtml(submission.doc_url)}" style="display:inline-block;background:#2a6049;color:#ffffff;text-decoration:none;padding:14px 32px;border-radius:5px;font-size:15px;font-weight:bold;letter-spacing:0.3px;">Open Your Grant Application &rarr;</a>
                   </td>
                 </tr>
               </table>`;
@@ -166,7 +174,7 @@ async function sendDeliveryEmail(submission, docxBuffer = null) {
   const emailOptions = {
     from: 'Wellspring Grants <hello@wellspringgrants.com>',
     to: submission.contact_email,
-    subject: `Your Grant Application Is Ready — ${submission.org_name}`,
+    subject: `Your Grant Application Is Ready — ${escapeHtml(submission.org_name)}`,
     attachments: isWord && docxBuffer
       ? [{ filename, content: docxBuffer }]
       : undefined,
@@ -193,7 +201,7 @@ async function sendDeliveryEmail(submission, docxBuffer = null) {
           <!-- Body -->
           <tr>
             <td style="padding:36px 36px 28px;">
-              <h1 style="margin:0 0 16px;font-size:22px;color:#1a1a1a;">Your grant application is ready, ${firstName}.</h1>
+              <h1 style="margin:0 0 16px;font-size:22px;color:#1a1a1a;">Your grant application is ready, ${escapeHtml(firstName)}.</h1>
               <p style="margin:0 0 24px;font-size:15px;color:#444;line-height:1.7;">
                 Your grant application for <strong>${submission.grant_program || submission.funder_name}</strong> is ready for your review.
               </p>
@@ -209,11 +217,11 @@ async function sendDeliveryEmail(submission, docxBuffer = null) {
                     <table cellpadding="0" cellspacing="0">
                       <tr>
                         <td style="font-size:13px;color:#666;padding-bottom:6px;padding-right:16px;">Organization</td>
-                        <td style="font-size:13px;color:#2c2c2c;font-weight:bold;padding-bottom:6px;">${submission.org_name}</td>
+                        <td style="font-size:13px;color:#2c2c2c;font-weight:bold;padding-bottom:6px;">${escapeHtml(submission.org_name)}</td>
                       </tr>
                       <tr>
                         <td style="font-size:13px;color:#666;padding-bottom:6px;padding-right:16px;">Funder</td>
-                        <td style="font-size:13px;color:#2c2c2c;font-weight:bold;padding-bottom:6px;">${submission.funder_name}</td>
+                        <td style="font-size:13px;color:#2c2c2c;font-weight:bold;padding-bottom:6px;">${escapeHtml(submission.funder_name)}</td>
                       </tr>
                       <tr>
                         <td style="font-size:13px;color:#666;padding-bottom:6px;padding-right:16px;">Grant Program</td>
@@ -256,7 +264,7 @@ async function sendDeliveryEmail(submission, docxBuffer = null) {
                     <span style="background:#2a6049;color:white;border-radius:50%;width:22px;height:22px;display:inline-block;text-align:center;font-size:12px;line-height:22px;font-weight:bold;">3</span>
                   </td>
                   <td style="vertical-align:top;">
-                    <p style="margin:0;font-size:14px;color:#444;line-height:1.6;"><strong>Submit to ${submission.funder_name} by ${deadline}</strong> — follow the funder's submission instructions and use this document as your application.</p>
+                    <p style="margin:0;font-size:14px;color:#444;line-height:1.6;"><strong>Submit to ${escapeHtml(submission.funder_name)} by ${deadline}</strong> — follow the funder's submission instructions and use this document as your application.</p>
                   </td>
                 </tr>
               </table>
@@ -300,10 +308,10 @@ async function sendDeliveryEmail(submission, docxBuffer = null) {
   };
 
   try {
-    await resend.emails.send(emailOptions);
-    console.log(`Delivery email sent to ${submission.contact_email} (format: ${submission.delivery_format || 'google_doc'})`);
+    await sendChecked(emailOptions);
+    console.log(`Delivery email sent to ${escapeHtml(submission.contact_email)} (format: ${submission.delivery_format || 'google_doc'})`);
   } catch (err) {
-    console.error(`Delivery email failed for ${submission.contact_email}:`, err.message);
+    console.error(`Delivery email failed for ${escapeHtml(submission.contact_email)}:`, err.message);
     throw err;
   }
 }
@@ -320,13 +328,13 @@ async function sendAdminNotificationEmail(submission) {
     : 'Paid via Stripe';
   const format = submission.delivery_format === 'word' ? 'Word Document (.docx)' : 'Google Doc';
   const appUrl = process.env.APP_URL || 'https://wellspringgrants.com';
-  const dashboardUrl = `${appUrl}/admin/submission/${submission.id}`;
+  const dashboardUrl = `${appUrl}/admin/submission/${escapeHtml(submission.id)}`;
 
   try {
-    await resend.emails.send({
+    await sendChecked({
       from: 'Wellspring Grants <hello@wellspringgrants.com>',
       to: 'hello@wellspringgrants.com',
-      subject: `New submission: ${submission.org_name} — ${submission.funder_name}`,
+      subject: `New submission: ${escapeHtml(submission.org_name)} — ${escapeHtml(submission.funder_name)}`,
       html: `
 <!DOCTYPE html>
 <html lang="en">
@@ -353,11 +361,11 @@ async function sendAdminNotificationEmail(submission) {
                 </tr>
                 <tr>
                   <td style="padding:9px 14px;font-size:13px;color:#666;border-bottom:1px solid #f0f0f0;width:140px;">Organization</td>
-                  <td style="padding:9px 14px;font-size:13px;color:#1a1a1a;font-weight:bold;border-bottom:1px solid #f0f0f0;">${submission.org_name}</td>
+                  <td style="padding:9px 14px;font-size:13px;color:#1a1a1a;font-weight:bold;border-bottom:1px solid #f0f0f0;">${escapeHtml(submission.org_name)}</td>
                 </tr>
                 <tr>
                   <td style="padding:9px 14px;font-size:13px;color:#666;border-bottom:1px solid #f0f0f0;">Funder</td>
-                  <td style="padding:9px 14px;font-size:13px;color:#1a1a1a;font-weight:bold;border-bottom:1px solid #f0f0f0;">${submission.funder_name}</td>
+                  <td style="padding:9px 14px;font-size:13px;color:#1a1a1a;font-weight:bold;border-bottom:1px solid #f0f0f0;">${escapeHtml(submission.funder_name)}</td>
                 </tr>
                 <tr>
                   <td style="padding:9px 14px;font-size:13px;color:#666;border-bottom:1px solid #f0f0f0;">Grant Program</td>
@@ -373,7 +381,7 @@ async function sendAdminNotificationEmail(submission) {
                 </tr>
                 <tr>
                   <td style="padding:9px 14px;font-size:13px;color:#666;border-bottom:1px solid #f0f0f0;">Contact</td>
-                  <td style="padding:9px 14px;font-size:13px;color:#1a1a1a;border-bottom:1px solid #f0f0f0;">${submission.contact_name} &lt;${submission.contact_email}&gt;</td>
+                  <td style="padding:9px 14px;font-size:13px;color:#1a1a1a;border-bottom:1px solid #f0f0f0;">${escapeHtml(submission.contact_name)} &lt;${escapeHtml(submission.contact_email)}&gt;</td>
                 </tr>
                 <tr>
                   <td style="padding:9px 14px;font-size:13px;color:#666;border-bottom:1px solid #f0f0f0;">Delivery Format</td>
@@ -403,9 +411,9 @@ async function sendAdminNotificationEmail(submission) {
 </html>
       `
     });
-    console.log(`Admin notification sent for submission ${submission.id}`);
+    console.log(`Admin notification sent for submission ${escapeHtml(submission.id)}`);
   } catch (err) {
-    console.error(`Admin notification failed for submission ${submission.id}:`, err.message);
+    console.error(`Admin notification failed for submission ${escapeHtml(submission.id)}:`, err.message);
   }
 }
 

@@ -842,24 +842,7 @@ async function createGrantDoc(submission) {
     console.warn('Header/footer setup failed (non-fatal):', hfErr.message);
   }
 
-  // ── Share with client email ───────────────────────────────────────────────
-
-  if (submission.contact_email) {
-    try {
-      await drive.permissions.create({
-        fileId: docId,
-        requestBody: {
-          type: 'user',
-          role: 'writer',
-          emailAddress: submission.contact_email
-        },
-        sendNotificationEmail: false
-      });
-      console.log(`Shared Google Doc with ${submission.contact_email}`);
-    } catch (shareErr) {
-      console.warn('Could not share doc with client (non-fatal):', shareErr.message);
-    }
-  }
+  // Drafts remain private until approval in the delivery route.
 
   return { docUrl, docId, clientFolderId };
 }
@@ -875,3 +858,9 @@ async function exportDocAsDocx(docId) {
 }
 
 module.exports = { createGrantDoc, exportDocAsDocx };
+
+async function shareGrantDoc(docId, email) {
+  const drive = google.drive({version:'v3',auth:getGoogleAuth()});
+  await drive.permissions.create({fileId:docId,requestBody:{type:'user',role:'writer',emailAddress:email},sendNotificationEmail:false});
+}
+module.exports.shareGrantDoc = shareGrantDoc;

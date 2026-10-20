@@ -278,3 +278,15 @@ Implementation and verification boundaries: docs/ORGANIC_FUNNEL.md.
 - [ ] Verify live-mode purchase readiness and owner-inbox test receipt.
 
 Operational details: docs/FIRST_CUSTOMER_OPERATIONS.md.
+
+## Buyer scope and document-header polish — October 20, 2026
+
+- [x] Clarify writing, research, editing and management scope on the existing service page.
+- [x] Link the existing pricing/service pages to a truthful shared Service/Offer entity.
+- [x] Align linked resource breadcrumbs with their structured hierarchy.
+- [x] Separate long document-header identifiers from the confidentiality notice.
+- [x] Verify provider-free requests, local routes and desktop/mobile presentation.
+- [ ] Review the draft PR before any merge or deployment.
+- [ ] Inspect the header visually on a future authorized document creation.
+
+Scope and rollback: docs/BUYER_SCOPE_DOCUMENT_POLISH.md.

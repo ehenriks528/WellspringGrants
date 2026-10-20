@@ -273,6 +273,14 @@ async function insertBudgetTable(docs, docId, tableData) {
 
 // ── Headers and footers ───────────────────────────────────────────────────────
 
+function compactHeaderLabel(value, fallback) {
+  const text=String(value||'').replace(/\s+/gu,' ').trim()||fallback;
+  // Keep identifiers compact; the cover page retains the full names. Segment
+  // graphemes so an ellipsis never splits an emoji or an accented character.
+  const characters=Array.from(new Intl.Segmenter('en',{granularity:'grapheme'}).segment(text),part=>part.segment);
+  return characters.length>24 ? characters.slice(0,23).join('')+'…' : text;
+}
+
 async function addHeaderAndFooter(docs, docId, submission) {
   // Create header
   const hRes = await docs.documents.batchUpdate({ documentId: docId, requestBody: { requests: [{
@@ -288,9 +296,11 @@ async function addHeaderAndFooter(docs, docId, submission) {
   const docSnap = await docs.documents.get({ documentId: docId });
   const actualFooterId = docSnap.data.documentStyle.defaultFooterId;
 
-  const orgLabel  = (submission.org_name || '').substring(0, 35);
-  const funderLabel = (submission.funder_name || '').substring(0, 35);
-  const headerText = `${orgLabel} | ${funderLabel}\tCONFIDENTIAL DRAFT — Prepared by Wellspring Grants\n`;
+  const orgLabel=compactHeaderLabel(submission.org_name,'Organization');
+  const funderLabel=compactHeaderLabel(submission.funder_name,'Funder');
+  // A tab is not a two-column layout in an exported Word header. Give the
+  // notice its own paragraph so long identifiers cannot run into it.
+  const headerText = `${orgLabel} | ${funderLabel}\nCONFIDENTIAL DRAFT — Prepared by Wellspring Grants\n`;
 
   const requests = [];
 
@@ -316,15 +326,26 @@ async function addHeaderAndFooter(docs, docId, submission) {
   // Style header with writable paragraph properties (tabStops is read-only).
   const hSnap = await docs.documents.get({ documentId: docId });
   const hContent = hSnap.data.headers?.[headerId]?.content || [];
-  let hParaStart = 1, hParaEnd = 2;
-  for (const el of hContent) {
-    if (el.paragraph) { hParaStart = el.startIndex ?? 0; hParaEnd = el.endIndex; break; }
-  }
+  const paragraphs=hContent.filter(el=>el.paragraph?.elements?.some(part=>part.textRun?.content?.trim()));
+  if(paragraphs.length<2)throw new Error('Document header paragraphs missing');
+  const hParaStart=paragraphs[0].startIndex??0;
+  const lastParagraph=paragraphs[paragraphs.length-1];
+  const hParaEnd=lastParagraph.endIndex;
 
   const hStyleReqs = [
     {
       updateParagraphStyle: {
         range: { startIndex: hParaStart, endIndex: hParaEnd, segmentId: headerId },
+        paragraphStyle: {
+          spaceAbove: { magnitude: 0, unit: 'PT' },
+          spaceBelow: { magnitude: 0, unit: 'PT' }
+        },
+        fields: 'spaceAbove,spaceBelow'
+      }
+    },
+    {
+      updateParagraphStyle: {
+        range: { startIndex: lastParagraph.startIndex??0, endIndex: hParaEnd, segmentId: headerId },
         paragraphStyle: {
           borderBottom: {
             color: { color: { rgbColor: C.hrBorder } },
@@ -833,7 +854,7 @@ async function exportDocAsDocx(docId) {
   return Buffer.from(res.data);
 }
 
-module.exports = { createGrantDoc, exportDocAsDocx };
+module.exports = { createGrantDoc, exportDocAsDocx, addHeaderAndFooter };
 
 async function shareGrantDoc(docId, email) {
   const drive = google.drive({version:'v3',auth:getGoogleAuth()});

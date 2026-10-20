@@ -261,6 +261,8 @@
 - [x] Align business-day timing, revision and post-payment cancellation terms.
 - [x] Add allowlisted first-party events and authenticated acquisition reporting.
 - [x] Add isolated validation for new business behavior and preserve existing payment checks.
-- [ ] Verify real provider configuration and complete target migration/deployment and public smoke checks.
+- [x] Publish acquisition site, run additive production migration and verify public routes/draft storage.
+- [x] Add a production order-readiness gate; keep fit inquiries and draft saving available during setup.
+- [ ] Complete live-mode payment, email and delivery verification before enabling production orders.
 
 Implementation and verification boundaries: docs/ORGANIC_FUNNEL.md.

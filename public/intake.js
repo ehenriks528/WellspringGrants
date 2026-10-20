@@ -6,6 +6,15 @@
   const error=document.getElementById('intake-error'),status=document.getElementById('draft-status');
   const resume=document.getElementById('resume-draft'),discard=document.getElementById('discard-draft');
   const summary=document.getElementById('review-summary'),estimate=document.getElementById('delivery-estimate');
+  const checkoutButton=document.getElementById('checkout-submit'),availabilityNotice=document.getElementById('order-availability');
+  let ordersAvailable=false;
+  checkoutButton.disabled=true;
+  fetch('/api/order-availability',{cache:'no-store'}).then(async response=>{
+    if(!response.ok)throw new Error('Unavailable');
+    ordersAvailable=(await response.json()).acceptingOrders===true;
+    checkoutButton.disabled=!ordersAvailable;
+    if(availabilityNotice)availabilityNotice.hidden=ordersAvailable;
+  }).catch(()=>{if(availabilityNotice)availabilityNotice.hidden=false;});
   let step=0,saved=null,dirty=false,maxVisited=0,editVersion=0;
   form.noValidate=true;
   document.querySelectorAll('.intake-enhanced').forEach(el=>el.hidden=false);
@@ -44,6 +53,7 @@
   form.addEventListener('submit',async event=>{
     event.preventDefault();error.textContent='';
     if(step<panels.length-1){if(validate(panels[step])){window.wellspringMeasure?.('intake_step_completed',step+1);show(step+1);}return;}
+    if(!ordersAvailable){error.textContent='Online orders are temporarily unavailable. You can save a draft or request a grant-fit review.';error.focus();return;}
     for(let i=0;i<panels.length;i++){
       const invalid=[...panels[i].querySelectorAll('input,textarea,select')].find(el=>!el.checkValidity());
       if(invalid){show(i);invalid.reportValidity();invalid.focus();return;}
@@ -60,7 +70,7 @@
       const target=new URL(data.redirect,location.origin);
       if(target.origin!==location.origin&&target.hostname!=='checkout.stripe.com')throw new Error('Unexpected checkout destination. Contact support.');
       dirty=false;location.assign(target.href);
-    }catch(err){error.textContent=err.message;error.focus();button.disabled=false;button.textContent='Continue to Payment — $450 →';}
+    }catch(err){error.textContent=err.message;error.focus();button.disabled=!ordersAvailable;button.textContent='Continue to Payment — $450 →';}
   });
   async function request(method,body){
     const response=await fetch('/api/intake-draft',{method,headers:{'Content-Type':'application/json'},...(body?{body:JSON.stringify(body)}:{})});

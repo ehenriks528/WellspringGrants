@@ -9,7 +9,7 @@ async function main(){
  let tail=Promise.resolve();const query=async(sql,values)=>{const result=await db.query(sql,values);return {...result,rowCount:result.rowCount??result.affectedRows??result.rows.length};};
  const pool={query,connect:async()=>{let release;const previous=tail;tail=new Promise(resolve=>release=resolve);await previous;return {query,release};}};
  process.env.APP_URL='http://127.0.0.1:4318';process.env.ADMIN_PASSWORD='preview-only-not-a-real-secret';
- const app=express();app.use(express.json());app.use(express.urlencoded({extended:false}));require('../marketing/routes').register(app);app.use(express.static(path.join(__dirname,'../public')));
+ const app=express();app.use(express.json());app.use(express.urlencoded({extended:false}));require('../marketing/routes').register(app);require('../acquisition/availability').register(app);app.use(express.static(path.join(__dirname,'../public')));
  app.get('/apply',(req,res)=>res.sendFile(path.join(__dirname,'../public/apply.html')));
  app.post('/checkout',(req,res)=>{try{require('../acquisition/intake').validate(req.body);res.json({redirect:'/preview-order'});}catch(error){res.status(400).json({error:error.message});}});
  app.get('/preview-order',(req,res)=>res.send('<h1>Local intake validation passed</h1><p>No payment, email, order or API generation was performed.</p><a href="/apply">Return to intake</a>'));

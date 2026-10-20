@@ -1,0 +1,21 @@
+name: Verify website and acquisition flow
+on:
+  pull_request:
+  push:
+    branches: [main, codex/acquisition-code-review]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run build:marketing
+      - run: npm test
+      - name: Check generated pages are current
+        run: git diff --exit-code -- public marketing/manifest.js

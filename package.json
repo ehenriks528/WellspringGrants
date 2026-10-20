@@ -10,7 +10,10 @@
     "migrate": "node db/migrate.js",
     "import": "node db/import-existing.js",
     "seed": "node --env-file=.env.local db/seed.js",
-    "seed:prod": "node db/seed.js"
+    "seed:prod": "node db/seed.js",
+    "test": "node --test test/*.test.js",
+    "build:marketing": "node marketing/build.js",
+    "prestart": "npm run migrate && npm run build:marketing"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.89.0",
@@ -23,6 +26,10 @@
     "stripe": "^22.0.1"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.10",
     "nodemon": "^3.1.14"
+  },
+  "overrides": {
+    "qs": "^6.16.1"
   }
 }

@@ -1,0 +1,24 @@
+// Isolated review preview: in-memory PostgreSQL, no paid APIs, no email sends.
+const express=require('express');const {PGlite}=require('@electric-sql/pglite');const fs=require('node:fs');const path=require('node:path');
+const {register}=require('../acquisition/routes');
+async function main(){
+ require('../marketing/build').build();
+ const db=new PGlite();await db.exec(fs.readFileSync(path.join(__dirname,'../acquisition/schema.sql'),'utf8'));
+ await db.exec(fs.readFileSync(path.join(__dirname,'../acquisition/drafts.sql'),'utf8'));
+ await db.exec(fs.readFileSync(path.join(__dirname,'../acquisition/funnel.sql'),'utf8'));
+ let tail=Promise.resolve();const query=async(sql,values)=>{const result=await db.query(sql,values);return {...result,rowCount:result.rowCount??result.affectedRows??result.rows.length};};
+ const pool={query,connect:async()=>{let release;const previous=tail;tail=new Promise(resolve=>release=resolve);await previous;return {query,release};}};
+ process.env.APP_URL='http://127.0.0.1:4318';process.env.ADMIN_PASSWORD='preview-only-not-a-real-secret';
+ const app=express();app.use(express.json());app.use(express.urlencoded({extended:false}));require('../marketing/routes').register(app);app.use(express.static(path.join(__dirname,'../public')));
+ app.get('/apply',(req,res)=>res.sendFile(path.join(__dirname,'../public/apply.html')));
+ app.post('/checkout',(req,res)=>{try{require('../acquisition/intake').validate(req.body);res.json({redirect:'/preview-order'});}catch(error){res.status(400).json({error:error.message});}});
+ app.get('/preview-order',(req,res)=>res.send('<h1>Local intake validation passed</h1><p>No payment, email, order or API generation was performed.</p><a href="/apply">Return to intake</a>'));
+ app.use('/admin',(req,res,next)=>{req.auth={user:'local-preview'};res.set('Cache-Control','no-store');next();});
+ app.get('/admin/leads.js',(req,res)=>res.sendFile(path.join(__dirname,'../public-admin/leads.js')));
+ require('../acquisition/drafts').register(app,pool);
+ require('../acquisition/funnel').register(app,pool);
+ register(app,pool,async(pool,id)=>pool.query("UPDATE acquisition_leads SET acknowledgement_status='preview_no_send' WHERE id=$1",[id]));
+ app.use((error,req,res,next)=>{console.error(error.message);res.status(500).json({error:'Preview request failed.'});});
+ app.listen(4318,'127.0.0.1',()=>console.log('Isolated preview: http://127.0.0.1:4318/fit — no email or payment connections.'));
+}
+main().catch(error=>{console.error(error);process.exit(1);});

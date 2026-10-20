@@ -3,33 +3,8 @@ const { getSubmission, updateSubmission } = require('./db');
 
 const client = new Anthropic();
 
-// Try to fetch the grant guidelines page and extract readable text
-async function fetchGuidelinesText(url) {
-  try {
-    const response = await fetch(url, {
-      signal: AbortSignal.timeout(8000),
-      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; WellspringGrants/1.0)' }
-    });
-
-    // Many RFPs link directly to a PDF. We have no PDF text extraction —
-    // running the HTML-tag-stripper below on raw PDF bytes produces
-    // garbled pseudo-text that looks like real content but isn't, which
-    // is worse than having no guidelines text at all. Bail out so the
-    // caller falls back to the "no guidelines fetched" flag instead.
-    const contentType = response.headers.get('content-type') || '';
-    if (contentType.includes('application/pdf') || url.toLowerCase().endsWith('.pdf')) {
-      return null;
-    }
-
-    const html = await response.text();
-    const text = html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
-    // 12,000 chars (~3x the previous cap) so real RFP priority language
-    // further down the page isn't cut off by nav/header boilerplate.
-    return text.slice(0, 12000);
-  } catch {
-    return null;
-  }
-}
+// Fetch public HTTPS guidelines with DNS and redirect checks. Writing rules below are unchanged.
+const { fetchGuidelinesText } = require('./acquisition/safe-fetch');
 
 // Build the full prompt Claude uses to write, score, revise, and output the grant
 function buildPrompt(submission, guidelinesText) {
@@ -274,7 +249,7 @@ Thank you for submitting your grant application for ${submission.funder_name}. W
 
 [List only the exact questions from the GAP entries above — no filler]
 
-Please reply to this email with your answers. We'll complete your grant within 48 hours of receiving this information.
+Please reply to this email with your answers. We'll complete your grant within two business days of receiving complete information. Business days are Monday-Friday; requests outside 9 a.m.-5 p.m. Eastern start the next business morning.
 
 Thank you,
 Emily

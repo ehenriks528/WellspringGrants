@@ -248,3 +248,19 @@
 
 *Wellspring Grants — Internal Operations*
 *hello@wellspringgrants.com*
+
+
+## Organic acquisition and purchase clarity
+
+- [x] Build public homepage, service/pricing/process pages and buyer FAQs.
+- [x] Add an ungated annotated fictional sample and downloadable text.
+- [x] Add preparation, readiness and scope/cost guides.
+- [x] Add canonical metadata, social previews, structured data, clean routes, robots and sitemap.
+- [x] Add four-step intake, derived location, requirements guidance and recoverable checkout errors.
+- [x] Add optional encrypted seven-day drafts with same-browser resume and deletion.
+- [x] Align business-day timing, revision and post-payment cancellation terms.
+- [x] Add allowlisted first-party events and authenticated acquisition reporting.
+- [x] Add isolated validation for new business behavior and preserve existing payment checks.
+- [ ] Verify real provider configuration and complete target migration/deployment and public smoke checks.
+
+Implementation and verification boundaries: docs/ORGANIC_FUNNEL.md.

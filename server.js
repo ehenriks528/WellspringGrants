@@ -2,11 +2,16 @@ require('dotenv').config();
 
 const express    = require('express');
 const path       = require('path');
+const { randomUUID } = require('node:crypto');
+const acquisition = require('./acquisition/routes');
+const drafts = require('./acquisition/drafts');
+const { claimPayment } = require('./acquisition/payments');
+const { escape: escapeHtml } = require('./acquisition/validation');
 const basicAuth  = require('express-basic-auth');
 const Stripe     = require('stripe');
 const { generateGrant }       = require('./generateGrant');
 const { sendConfirmationEmail, sendDeliveryEmail, sendAdminNotificationEmail } = require('./sendEmail');
-const { createGrantDoc, exportDocAsDocx } = require('./createDoc');
+const { createGrantDoc, exportDocAsDocx, shareGrantDoc } = require('./createDoc');
 const {
   pool,
   createSubmission,
@@ -17,7 +22,18 @@ const {
   redeemPromoCode,
 } = require('./db');
 
+if (!process.env.ADMIN_PASSWORD || process.env.ADMIN_PASSWORD.length < 12) throw new Error('Set ADMIN_PASSWORD to at least 12 characters.');
+if (!process.env.APP_URL) throw new Error('APP_URL is required.');
 const app    = express();
+app.disable('x-powered-by');
+app.set('trust proxy', 1); // Railway: one trusted reverse proxy
+app.use((req,res,next) => {
+  res.set('X-Content-Type-Options','nosniff');
+  res.set('Referrer-Policy','same-origin');
+  res.set('X-Frame-Options','DENY');
+  if (req.path.startsWith('/admin')) res.set('Cache-Control','no-store');
+  next();
+});
 const PORT   = process.env.PORT || 3000;
 const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
 
@@ -43,48 +59,18 @@ app.post('/webhook',
       return res.status(400).send('Webhook Error: ' + err.message);
     }
 
-    if (event.type === 'checkout.session.completed') {
-      const session      = event.data.object;
-      const submissionId = session.metadata?.submissionId;
-
-      if (!submissionId) {
-        console.error('Webhook: no submissionId in metadata');
-        return res.json({ received: true });
+    try {
+      if (['checkout.session.completed','checkout.session.async_payment_succeeded'].includes(event.type)) {
+        const submission = await claimPayment(pool, event.data.object);
+        if (submission) {
+          generateGrant(submission.id).catch(err => console.error('Generation failed:', submission.id, err.message));
+          sendConfirmationEmail(submission).catch(err => console.error('Confirmation failed:', submission.id, err.message));
+          sendAdminNotificationEmail(submission).catch(err => console.error('Admin notification failed:', submission.id, err.message));
+        }
       }
-
-      const submission = await getSubmission(submissionId);
-
-      if (!submission) {
-        console.error('Webhook: submission not found:', submissionId);
-        return res.json({ received: true });
-      }
-
-      // Idempotency guard — only process once
-      if (submission.status !== 'pending_payment') {
-        console.log('Webhook: already processed:', submissionId);
-        return res.json({ received: true });
-      }
-
-      await updateSubmission(submissionId, {
-        status:           'generating',
-        stripe_session_id: session.id,
-        paid_at:          new Date().toISOString(),
-      });
-
-      // Fire generation and email — non-blocking
-      generateGrant(submissionId).catch(err => {
-        console.error('Generation failed:', submissionId, err.message);
-      });
-
-      sendConfirmationEmail(submission).catch(err => {
-        console.error('Confirmation email failed:', submissionId, err.message);
-      });
-
-      sendAdminNotificationEmail(submission).catch(err => {
-        console.error('Admin notification failed:', submissionId, err.message);
-      });
-
-      console.log('Webhook: generation triggered for', submissionId);
+    } catch (error) {
+      console.error('Webhook processing failed:', event.id);
+      return res.status(500).json({error:'Payment processing will be retried.'});
     }
 
     res.json({ received: true });
@@ -107,6 +93,7 @@ process.on('uncaughtException', (err) => {
 
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 app.use(express.json({ limit: '1mb' }));
+require('./marketing/routes').register(app);
 app.use(express.static('public'));
 
 // ─── Health check ─────────────────────────────────────────────────────────────
@@ -125,7 +112,24 @@ app.use('/admin', basicAuth({
   realm: 'Wellspring Grants Admin',
 }));
 
+app.use('/admin', (req,res,next) => req.method === 'GET' ? next() : acquisition.sameOrigin(req,res,next));
+app.get('/admin/leads.js', (req,res) => res.sendFile(path.join(__dirname,'public-admin/leads.js')));
+acquisition.register(app,pool);
+require('./acquisition/funnel').register(app,pool);
+drafts.register(app,pool);
+drafts.startCleanup(pool);
+require('./acquisition/email').startAcknowledgmentWorker(pool);
+
 // ─── Helper functions ─────────────────────────────────────────────────────────
+
+function htmlSubmission(row) {
+  if (!row) return row;
+  const safe = Object.fromEntries(Object.entries(row).map(([key,value]) => [key, typeof value === 'string' ? escapeHtml(value) : value]));
+  for (const field of ['guidelines_url','doc_url']) if (row[field] && !/^https:\/\//i.test(row[field])) safe[field] = '#';
+  // IDs occur in links and inline action handlers; legacy unsafe IDs are inert.
+  if (!/^[a-zA-Z0-9-]{1,100}$/.test(String(row.id))) safe.id = 'invalid-legacy-id';
+  return safe;
+}
 
 function statusBadge(status) {
   const styles = {
@@ -195,114 +199,8 @@ app.get('/validate-promo', async (req, res) => {
 // Receive form, save as pending_payment, then fork:
 //   — valid promo code → bypass Stripe, fire generation immediately
 //   — no code / invalid code → redirect to Stripe Checkout as normal
-app.post('/checkout', async (req, res) => {
-  const id      = String(Date.now());
-  const rawBody = trimBody(req.body);
-
-  // Extract promo code before building the submission record.
-  // promo_code and promo_valid are form-only fields — neither is a DB column.
-  const promoCode = rawBody.promo_code ? rawBody.promo_code.toUpperCase() : null;
-  delete rawBody.promo_code;
-  delete rawBody.promo_valid;
-
-  const submission = {
-    id,
-    submitted_at: new Date().toISOString(),
-    status: 'pending_payment',
-    ...rawBody,
-  };
-
-  console.log('\n--- New Submission (awaiting payment) ---');
-  console.log('From:', submission.contact_name, '<' + submission.contact_email + '>');
-  console.log('Org:', submission.org_name);
-  console.log('Funder:', submission.funder_name);
-  if (promoCode) console.log('Promo code submitted:', promoCode);
-  console.log('-----------------------------------------\n');
-
-  try {
-    await createSubmission(submission);
-  } catch (err) {
-    console.error('Failed to save submission:', err.message);
-    return res.status(500).send('Submission could not be saved. Please try again or contact hello@wellspringgrants.com.');
-  }
-
-  // ── Promo code path ────────────────────────────────────────────────────────
-  // Validate independently of anything the frontend sent — the backend is
-  // the only authority on whether a code is valid.
-  if (promoCode) {
-    const promoRecord = await validatePromoCode(promoCode);
-
-    if (promoRecord) {
-      // One promo use per email address — check if this email has already used any promo code
-      const priorUse = await pool.query(
-        'SELECT COUNT(*) FROM submissions WHERE contact_email = $1 AND promo_code_used IS NOT NULL',
-        [submission.contact_email]
-      );
-      const alreadyUsed = parseInt(priorUse.rows[0].count, 10) > 0;
-
-      if (alreadyUsed) {
-        // Silently fall through to Stripe — no error shown to client
-        console.log(`Promo code blocked for repeat email (${submission.contact_email}), proceeding to Stripe`);
-      } else {
-      // Redeem the code and mark the submission as a comp
-      await redeemPromoCode(promoCode);
-      await updateSubmission(id, {
-        status:          'generating',
-        is_comp:         true,
-        promo_code_used: promoCode,
-        paid_at:         new Date().toISOString(),
-      });
-
-      // Fire generation and email — identical to the paid webhook path
-      generateGrant(id).catch(err => {
-        console.error('Generation failed (comp):', id, err.message);
-      });
-
-      sendConfirmationEmail(submission).catch(err => {
-        console.error('Confirmation email failed (comp):', id, err.message);
-      });
-
-      sendAdminNotificationEmail(submission).catch(err => {
-        console.error('Admin notification failed (comp):', id, err.message);
-      });
-
-      console.log(`Comp submission processed (${promoCode}): ${id}`);
-      return res.redirect('/confirmation.html');
-      } // end !alreadyUsed
-    }
-
-    // Code was submitted but is invalid/expired/already used — fall through to Stripe
-    console.log(`Promo code not applied (${promoCode}), proceeding to Stripe`);
-  }
-
-  // ── Stripe path (no code, or invalid code) ─────────────────────────────────
-  try {
-    const session = await stripe.checkout.sessions.create({
-      payment_method_types: ['card'],
-      line_items: [{
-        price_data: {
-          currency: 'usd',
-          product_data: {
-            name: 'Grant Application — Single',
-            description: `${submission.org_name} · ${submission.funder_name}`,
-          },
-          unit_amount: 45000, // $450.00 in cents
-        },
-        quantity: 1,
-      }],
-      mode: 'payment',
-      customer_email: submission.contact_email,
-      metadata: { submissionId: id },
-      success_url: `${process.env.APP_URL}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url:  `${process.env.APP_URL}/payment-cancelled`,
-    });
-
-    res.redirect(303, session.url);
-  } catch (err) {
-    console.error('Stripe error:', err.message);
-    res.status(500).send('Payment setup failed. Please try again or contact hello@wellspringgrants.com.');
-  }
-});
+app.post('/checkout', acquisition.limiter(10), acquisition.sameOrigin,
+  require('./acquisition/checkout').createCheckoutHandler({pool,createSubmission,updateSubmission,validatePromoCode,redeemPromoCode,stripe,generateGrant,sendConfirmationEmail,sendAdminNotificationEmail}));
 
 // Stripe redirects here after successful payment.
 // Grant generation is now triggered exclusively by the /webhook route.
@@ -316,11 +214,12 @@ app.get('/payment-success', async (req, res) => {
 
   try {
     const session = await stripe.checkout.sessions.retrieve(session_id);
-    if (session.payment_status !== 'paid') {
+    if (session.payment_status !== 'paid' || session.amount_total !== 45000 || session.currency !== 'usd' || !session.metadata?.submissionId) {
       return res.redirect('/payment-cancelled');
     }
   } catch (err) {
-    console.error('Payment verification error:', err.message);
+    console.error('Payment verification failed.');
+    return res.status(503).send('We could not verify payment yet. Please check your receipt or contact hello@wellspringgrants.com.');
   }
 
   res.redirect('/confirmation.html');
@@ -333,7 +232,7 @@ app.get('/payment-cancelled', (req, res) => {
 // ─── Admin routes ─────────────────────────────────────────────────────────────
 
 app.get('/admin', async (req, res) => {
-  const submissions = await getAllSubmissions(); // already newest-first from DB
+  const submissions = (await getAllSubmissions()).map(htmlSubmission); // already newest-first from DB
 
   const rows = submissions.length === 0
     ? `<tr><td colspan="7" style="text-align:center;padding:40px;color:#888;">No submissions yet.</td></tr>`
@@ -393,7 +292,7 @@ app.get('/admin', async (req, res) => {
 <body>
   <div class="header">
     <div>
-      <div class="logo">Wellspring Grants — Admin</div>
+      <div class="logo">Wellspring Grants — Admin</div><a href="/admin/leads">Leads &amp; outreach queue →</a>
       <div class="subtitle">${submissions.length} total submission${submissions.length !== 1 ? 's' : ''}</div>
     </div>
     <div class="stats">
@@ -440,7 +339,7 @@ app.get('/admin', async (req, res) => {
 });
 
 app.get('/admin/submission/:id', async (req, res) => {
-  const submission = await getSubmission(req.params.id);
+  const submission = htmlSubmission(await getSubmission(req.params.id));
 
   if (!submission) return res.status(404).send('Submission not found.');
 
@@ -452,8 +351,7 @@ app.get('/admin/submission/:id', async (req, res) => {
     : '<div style="color:#aaa;font-size:13px;">Score not yet available</div>';
 
   const clientGrantPanel = submission.grant_body
-    ? `<div id="grant-body" style="background:#fafaf8;border:1px solid #e8e4dc;border-radius:6px;padding:28px 32px;line-height:1.8;font-size:14px;max-height:700px;overflow-y:auto;"></div>
-       <script>document.getElementById('grant-body').innerHTML = marked.parse(${JSON.stringify(submission.grant_body)});</script>`
+    ? `<pre id="grant-body" style="white-space:pre-wrap;background:#fafaf8;padding:28px;max-height:700px;overflow:auto">${submission.grant_body}</pre>`
     : `<div style="padding:40px;text-align:center;color:#888;background:#fafaf8;border:1px solid #e8e4dc;border-radius:6px;">
          ${submission.status === 'generating' ? 'Grant is generating — refresh in a moment.' : 'No draft available yet.'}
        </div>`;
@@ -487,8 +385,7 @@ app.get('/admin/submission/:id', async (req, res) => {
   // ── Right panel: internal QA report ────────────────────────────────────────
 
   const qaPanel = submission.qa_report
-    ? `<div id="qa-report" style="background:#fffef8;border:1px solid #e8e4dc;border-radius:6px;padding:28px 32px;line-height:1.7;font-size:13px;max-height:700px;overflow-y:auto;"></div>
-       <script>document.getElementById('qa-report').innerHTML = marked.parse(${JSON.stringify(submission.qa_report)});</script>`
+    ? `<pre id="qa-report" style="white-space:pre-wrap;background:#fffef8;padding:28px;max-height:700px;overflow:auto">${submission.qa_report}</pre>`
     : `<div style="padding:40px;text-align:center;color:#888;background:#fffef8;border:1px solid #e8e4dc;border-radius:6px;">
          No QA report available.
        </div>`;
@@ -503,7 +400,7 @@ app.get('/admin/submission/:id', async (req, res) => {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${submission.org_name} — Wellspring Admin</title>
-  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: Georgia, serif; background: #f4f1eb; color: #2c2c2c; padding: 32px 24px; }
@@ -706,6 +603,8 @@ app.post('/admin/submission/:id/mark-delivered', async (req, res) => {
     });
   }
 
+  if (submission.status !== 'draft_ready' || (!Number.isFinite(Number(submission.quality_score)) || Number(submission.quality_score) < 8.6) || submission.client_input_required) return res.status(409).json({error:'Human review requires a ready draft, quality score of at least 8.6, and no outstanding client input.'});
+
   // Export as Word doc if that's what the client requested
   let docxBuffer = null;
   if (submission.delivery_format === 'word' && submission.doc_id) {
@@ -721,11 +620,12 @@ app.post('/admin/submission/:id/mark-delivered', async (req, res) => {
 
   let emailSent = false;
   try {
+    await shareGrantDoc(submission.doc_id, submission.contact_email);
     await sendDeliveryEmail(submission, docxBuffer);
     emailSent = true;
   } catch (err) {
     console.error(`Delivery email failed for submission ${req.params.id}:`, err.message);
-    // Email failure does not block the status update
+    return res.status(502).json({success:false,error:'Delivery was not accepted. Retry after checking the email service.'});
   }
 
   await updateSubmission(req.params.id, {
@@ -736,6 +636,11 @@ app.post('/admin/submission/:id/mark-delivered', async (req, res) => {
   console.log(`Submission ${req.params.id} marked as delivered. Email sent: ${emailSent}`);
 
   res.json({ success: true, delivered: true, emailSent, deliveredAt });
+});
+
+app.use((error,req,res,next) => {
+  console.error('Request failed:',req.method,req.path);
+  if (!res.headersSent) res.status(500).json({error:'Please try again or contact hello@wellspringgrants.com.'});
 });
 
 app.listen(PORT, () => {

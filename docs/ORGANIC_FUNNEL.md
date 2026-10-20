@@ -80,6 +80,15 @@ authorization; noindex is not an access control.
 
 ## Validation and rollout
 
+Production checkout remains closed unless PAID_ORDERS_ENABLED=true and the Stripe
+secret is a live-mode key. Explicit false also pauses orders in any environment.
+Keep the production flag false until live Stripe webhook configuration, sender
+authentication and delivery readiness are verified. The intake displays an
+unavailability notice and permits draft saving; the backend refuses checkout
+before creating any submission, promo redemption, payment or generation job.
+The public /api/order-availability response contains only a boolean, no keys.
+This readiness gate does not create or configure provider credentials.
+
 npm test exercises isolated database/API behavior, deadline/timezone conversion,
 actual checkout-handler logic with a mocked payment provider, metadata/routes,
 sample response limits, draft isolation/expiry and payment deduplication.

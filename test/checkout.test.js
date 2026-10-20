@@ -9,6 +9,7 @@ let server,base,mode='normal',submissions=[],updates=[],queries=[],sessions=[];
 const intake={purchase_terms_confirmed:'yes',non_federal_confirmed:'yes',org_name:'Synthetic nonprofit',mission:'Local test only',ein:'12-3456789',signer_name:'Test Director',signer_title:'Director',org_phone:'2025550100',org_street:'Test address',org_city:'Test City',org_state:'MA',org_zip:'02110',tax_exempt:'yes',years_operating:'0',track_record:'New organization with no completed programs',funder_name:'Fictional test funder',grant_program:'Synthetic application',guidelines_url:'https://example.org/grants',grant_deadline:'2099-01-01',special_requirements:'Synthetic project prompt, maximum 200 words.',problem_statement:'Synthetic context',project_description:'Synthetic program',target_population:'Synthetic participants',expected_outcomes:'Planned outcomes',sustainability_plan:'Proposed future fundraising',budget_breakdown:'Test budget',amount_requested:'12000',annual_budget:'100000',delivery_format:'word',contact_name:'Test Director',contact_email:'local-test@example.org'};
 before(async()=>{
   const app=express();app.use(express.json());app.use(express.urlencoded({extended:false}));
+  require('../acquisition/availability').register(app);
   app.post('/checkout',sameOrigin,createCheckoutHandler({
     pool:{query:async(sql,args)=>{queries.push({sql,args});if(mode==='unexpected')throw new Error('synthetic db error');return {rows:[{count:'0'}],rowCount:1};}},
     createSubmission:async submission=>submissions.push(submission),
@@ -48,4 +49,22 @@ test('a supported complimentary order follows its existing flow without a paid c
   const response=await post({...intake,promo_code:'SYNTHETIC'});
   assert.equal(response.status,200);assert.equal((await response.json()).redirect,'/confirmation.html');
   assert.equal(sessions.length,before);assert.ok(updates.some(update=>update.values.is_comp===true));mode='normal';
+});
+test('production readiness blocks test payments and comp work before any order or provider activity',async()=>{
+  const names=['NODE_ENV','PAID_ORDERS_ENABLED','STRIPE_SECRET_KEY'];
+  const previous=Object.fromEntries(names.map(name=>[name,process.env[name]]));
+  const counts=[submissions.length,queries.length,sessions.length,updates.length];
+  try{
+    process.env.NODE_ENV='production';process.env.STRIPE_SECRET_KEY='sk_test_synthetic';delete process.env.PAID_ORDERS_ENABLED;
+    let response=await fetch(base+'/api/order-availability');
+    assert.equal(response.headers.get('cache-control'),'no-store');assert.deepEqual(await response.json(),{acceptingOrders:false});
+    process.env.PAID_ORDERS_ENABLED='true';
+    response=await post({...intake,promo_code:'SYNTHETIC'});assert.equal(response.status,503);assert.match((await response.json()).error,/No order or payment/);
+    process.env.STRIPE_SECRET_KEY='sk_live_synthetic';process.env.PAID_ORDERS_ENABLED='false';
+    response=await post(intake,'text/html');assert.equal(response.status,503);
+    assert.deepEqual([submissions.length,queries.length,sessions.length,updates.length],counts);
+    process.env.PAID_ORDERS_ENABLED='true';
+    assert.deepEqual(await (await fetch(base+'/api/order-availability')).json(),{acceptingOrders:true});
+    response=await post(intake);assert.equal(response.status,200);
+  }finally{for(const name of names){if(previous[name]===undefined)delete process.env[name];else process.env[name]=previous[name];}}
 });

@@ -2,6 +2,7 @@ const {randomUUID}=require('node:crypto');
 const acquisition=require('./routes');
 const service=require('../marketing/service');
 const {validate}=require('./intake');
+const {acceptingOrders}=require('./availability');
 
 // Enhanced intake retains answers after server validation errors.
 // Plain HTML form posts retain a working redirect fallback.
@@ -19,6 +20,8 @@ function checkoutRedirect(req,res,target) {
 function createCheckoutHandler(dependencies) {
   const {pool,createSubmission,updateSubmission,validatePromoCode,redeemPromoCode,stripe,generateGrant,sendConfirmationEmail,sendAdminNotificationEmail}=dependencies;
   const handler=async(req,res)=>{
+
+  if(!acceptingOrders())return checkoutError(req,res,503,'Online orders are temporarily unavailable. Your answers remain on this page. Save a draft or request a grant-fit review at /fit. No order or payment has been created.');
 
   const id = randomUUID();
   let rawBody;

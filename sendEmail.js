@@ -4,8 +4,8 @@ const businessClock = require('./public/business-clock');
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-async function sendChecked(options) {
-  const result = await resend.emails.send(options);
+async function sendChecked(options,idempotencyKey) {
+  const result = await resend.emails.send(options,idempotencyKey?{idempotencyKey}:undefined);
   if (result.error || !result.data?.id) throw new Error('Email provider did not accept message');
   return result;
 }
@@ -14,7 +14,7 @@ async function sendConfirmationEmail(submission) {
   const writingDue = businessClock.display(businessClock.dueAt(submission.paid_at || new Date()));
   const deliveryFormat = submission.delivery_format === 'word' ? 'Word Document (.docx)' : 'Google Doc';
   const deadline = submission.grant_deadline
-    ? new Date(submission.grant_deadline).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+    ? new Date(submission.grant_deadline).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone:'UTC' })
     : 'as specified';
 
   try {
@@ -131,9 +131,9 @@ async function sendConfirmationEmail(submission) {
 </body>
 </html>
       `
-    });
+    },`order-confirmation/${submission.id}`);
 
-    console.log(`Confirmation email sent to ${escapeHtml(submission.contact_email)}`);
+    console.log(`Confirmation email accepted for submission ${submission.id}`);
   } catch (err) {
     // Email failure should never block the main flow
     console.error(`Email failed for submission ${escapeHtml(submission.id)}`);
@@ -144,7 +144,7 @@ async function sendConfirmationEmail(submission) {
 async function sendDeliveryEmail(submission, docxBuffer = null) {
   const firstName = (submission.contact_name || '').split(' ')[0] || 'there';
   const deadline = submission.grant_deadline
-    ? new Date(submission.grant_deadline).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+    ? new Date(submission.grant_deadline).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone:'UTC' })
     : 'as specified';
   const scoreDisplay = submission.quality_score != null
     ? `${parseFloat(submission.quality_score).toFixed(1)} / 10`
@@ -205,7 +205,7 @@ async function sendDeliveryEmail(submission, docxBuffer = null) {
             <td style="padding:36px 36px 28px;">
               <h1 style="margin:0 0 16px;font-size:22px;color:#1a1a1a;">Your grant application is ready, ${escapeHtml(firstName)}.</h1>
               <p style="margin:0 0 24px;font-size:15px;color:#444;line-height:1.7;">
-                Your grant application for <strong>${submission.grant_program || submission.funder_name}</strong> is ready for your review.
+                Your grant application for <strong>${escapeHtml(submission.grant_program || submission.funder_name)}</strong> is ready for your review.
               </p>
 
               <!-- Doc access -->
@@ -227,7 +227,7 @@ async function sendDeliveryEmail(submission, docxBuffer = null) {
                       </tr>
                       <tr>
                         <td style="font-size:13px;color:#666;padding-bottom:6px;padding-right:16px;">Grant Program</td>
-                        <td style="font-size:13px;color:#2c2c2c;font-weight:bold;padding-bottom:6px;">${submission.grant_program || '—'}</td>
+                        <td style="font-size:13px;color:#2c2c2c;font-weight:bold;padding-bottom:6px;">${escapeHtml(submission.grant_program || '—')}</td>
                       </tr>
                       <tr>
                         <td style="font-size:13px;color:#666;padding-bottom:6px;padding-right:16px;">Deadline</td>
@@ -284,7 +284,7 @@ async function sendDeliveryEmail(submission, docxBuffer = null) {
               </table>
 
               <p style="margin:0;font-size:14px;color:#666;line-height:1.7;">
-                Questions? Reply to this email and Emily will get back to you within 24 hours.
+                One round of revisions is included when requested within 14 days of delivery. Additional revisions cost $50 per revision. Questions or changes? Reply to hello@wellspringgrants.com.
               </p>
             </td>
           </tr>
@@ -310,17 +310,17 @@ async function sendDeliveryEmail(submission, docxBuffer = null) {
   };
 
   try {
-    await sendChecked(emailOptions);
-    console.log(`Delivery email sent to ${escapeHtml(submission.contact_email)} (format: ${submission.delivery_format || 'google_doc'})`);
+    await sendChecked(emailOptions,`order-delivery/${submission.id}`);
+    console.log(`Delivery email accepted for submission ${submission.id}`);
   } catch (err) {
-    console.error(`Delivery email failed for ${escapeHtml(submission.contact_email)}:`, err.message);
+    console.error(`Delivery email failed for submission ${submission.id}`);
     throw err;
   }
 }
 
 async function sendAdminNotificationEmail(submission) {
   const deadline = submission.grant_deadline
-    ? new Date(submission.grant_deadline).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+    ? new Date(submission.grant_deadline).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone:'UTC' })
     : '—';
   const amount = submission.amount_requested
     ? `$${Number(submission.amount_requested).toLocaleString()}`
@@ -371,7 +371,7 @@ async function sendAdminNotificationEmail(submission) {
                 </tr>
                 <tr>
                   <td style="padding:9px 14px;font-size:13px;color:#666;border-bottom:1px solid #f0f0f0;">Grant Program</td>
-                  <td style="padding:9px 14px;font-size:13px;color:#1a1a1a;border-bottom:1px solid #f0f0f0;">${submission.grant_program || '—'}</td>
+                  <td style="padding:9px 14px;font-size:13px;color:#1a1a1a;border-bottom:1px solid #f0f0f0;">${escapeHtml(submission.grant_program || '—')}</td>
                 </tr>
                 <tr>
                   <td style="padding:9px 14px;font-size:13px;color:#666;border-bottom:1px solid #f0f0f0;">Amount</td>
@@ -412,10 +412,11 @@ async function sendAdminNotificationEmail(submission) {
 </body>
 </html>
       `
-    });
+    },`order-admin/${submission.id}`);
     console.log(`Admin notification sent for submission ${escapeHtml(submission.id)}`);
   } catch (err) {
     console.error(`Admin notification failed for submission ${escapeHtml(submission.id)}:`, err.message);
+    throw err;
   }
 }
 

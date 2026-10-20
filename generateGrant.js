@@ -368,7 +368,7 @@ WORD COUNT NOTES:
 }
 
 // Parse Claude's output and save all fields to the database
-async function saveGrantResult(submissionId, fullOutput) {
+async function saveGrantResult(submissionId, fullOutput, persist=updateSubmission) {
   const bodyMatch = fullOutput.match(/<<<GRANT_BODY_BEGIN>>>([\s\S]*?)<<<GRANT_BODY_END>>>/);
   const qaMatch   = fullOutput.match(/<<<QA_REPORT_BEGIN>>>([\s\S]*?)<<<QA_REPORT_END>>>/);
 
@@ -384,7 +384,7 @@ async function saveGrantResult(submissionId, fullOutput) {
 
   const status = clientInputRequired ? 'input_required' : 'draft_ready';
 
-  await updateSubmission(submissionId, {
+  await persist(submissionId, {
     grant_draft:           fullOutput,
     grant_body:            grantBody,
     qa_report:             qaReport,
@@ -400,7 +400,8 @@ async function saveGrantResult(submissionId, fullOutput) {
 // Main function — called from the /webhook route after payment confirmed.
 // Accepts a submission ID (string), fetches the full record from DB,
 // and throws immediately if the record is not found.
-async function generateGrant(submissionId) {
+async function generateGrant(submissionId, options={}) {
+  const persist=options.persist||updateSubmission;
   const submission = await getSubmission(submissionId);
   if (!submission) {
     throw new Error(`Submission not found: ${submissionId}`);
@@ -418,22 +419,23 @@ async function generateGrant(submissionId) {
       model: 'claude-sonnet-4-6',
       max_tokens: 16000,
       messages: [{ role: 'user', content: prompt }]
-    });
+    }, options.signal ? {signal:options.signal,timeout:600000,maxRetries:0} : undefined);
 
     const fullOutput = message.content[0].text;
-    await saveGrantResult(submissionId, fullOutput);
+    await saveGrantResult(submissionId, fullOutput, persist);
     console.log(`Grant generation complete for submission ${submissionId}`);
 
   } catch (err) {
     console.error(`Grant generation failed for submission ${submissionId}:`, err.message);
     try {
-      await updateSubmission(submissionId, {
+      await persist(submissionId, {
         status: 'generation_failed',
         error:  err.message,
       });
     } catch (updateErr) {
       console.error('Failed to update error status:', updateErr.message);
     }
+    if(options.throwOnError)throw err;
   }
 }
 

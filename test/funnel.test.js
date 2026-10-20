@@ -16,6 +16,7 @@ const auth='Basic '+Buffer.from('admin:only-for-isolated-tests').toString('base6
 process.env.ADMIN_PASSWORD='only-for-isolated-tests';process.env.APP_URL=origin;
 before(async()=>{
  db=new PGlite();await db.exec(fs.readFileSync('db/schema.sql','utf8'));await db.exec(fs.readFileSync('acquisition/schema.sql','utf8'));await db.exec(fs.readFileSync('acquisition/schema.sql','utf8'));
+ await db.exec(fs.readFileSync('acquisition/fulfillment.sql','utf8'));
  let tail=Promise.resolve();
  const query=async(sql,values)=>{const r=await db.query(sql,values);return {...r,rowCount:r.affectedRows??r.rows.length};};
  pool={query,connect:async()=>{let release;const previous=tail;tail=new Promise(resolve=>release=resolve);await previous;return {query,release};}};

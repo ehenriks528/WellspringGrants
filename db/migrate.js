@@ -12,6 +12,7 @@ async function migrate() {
     await pool.query(fs.readFileSync(path.join(__dirname, '../acquisition/schema.sql'), 'utf8'));
     await pool.query(fs.readFileSync(path.join(__dirname, '../acquisition/drafts.sql'), 'utf8'));
     await pool.query(fs.readFileSync(path.join(__dirname, '../acquisition/funnel.sql'), 'utf8'));
+    await pool.query(fs.readFileSync(path.join(__dirname, '../acquisition/fulfillment.sql'), 'utf8'));
     console.log('Migration complete — schema is up to date.');
   } catch (err) {
     console.error('Migration failed:', err.message);

@@ -266,3 +266,15 @@
 - [ ] Complete live-mode payment, email and delivery verification before enabling production orders.
 
 Implementation and verification boundaries: docs/ORGANIC_FUNNEL.md.
+
+## First-customer reliability sprint — October 20, 2026
+
+- [x] Save fulfillment jobs in the payment/comp transaction.
+- [x] Recover interrupted work with leases, fencing and bounded retries.
+- [x] Prevent simultaneous promo overspend and email-identity reuse.
+- [x] Add stable order-email idempotency keys and visible send failures.
+- [x] Add private fulfillment/retry reporting and the owner's review upper limit.
+- [x] Preserve all writing rules and purchase policies.
+- [ ] Verify live-mode purchase readiness and owner-inbox test receipt.
+
+Operational details: docs/FIRST_CUSTOMER_OPERATIONS.md.

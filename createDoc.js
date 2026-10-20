@@ -450,7 +450,7 @@ async function createGrantDoc(submission) {
 
   const preparedDate = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
   const deadline = submission.grant_deadline
-    ? new Date(submission.grant_deadline).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+    ? new Date(submission.grant_deadline).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone:'UTC' })
     : '—';
   const amount   = `$${Number(submission.amount_requested || 0).toLocaleString()}`;
   const budget   = submission.annual_budget ? `$${Number(submission.annual_budget).toLocaleString()}` : '—';

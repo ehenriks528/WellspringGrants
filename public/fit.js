@@ -1,4 +1,5 @@
 const form=document.getElementById('fit'), result=document.getElementById('result');
+form.addEventListener('input',()=>window.wellspringMeasure?.('fit_started'),{once:true});
 form.addEventListener('submit',async event=>{
  event.preventDefault();const button=form.querySelector('button');button.disabled=true;result.textContent='Saving your inquiry…';
  const body=Object.fromEntries(new FormData(form));body.consent=form.elements.consent.checked;

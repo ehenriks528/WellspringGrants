@@ -249,7 +249,7 @@ Thank you for submitting your grant application for ${submission.funder_name}. W
 
 [List only the exact questions from the GAP entries above — no filler]
 
-Please reply to this email with your answers. We'll complete your grant within 48 hours of receiving this information.
+Please reply to this email with your answers. We'll complete your grant within two business days of receiving complete information. Business days are Monday-Friday; requests outside 9 a.m.-5 p.m. Eastern start the next business morning.
 
 Thank you,
 Emily

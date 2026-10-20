@@ -1,5 +1,6 @@
 const { Resend } = require('resend');
 const { escape: escapeHtml } = require('./acquisition/validation');
+const businessClock = require('./public/business-clock');
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -10,6 +11,7 @@ async function sendChecked(options) {
 }
 
 async function sendConfirmationEmail(submission) {
+  const writingDue = businessClock.display(businessClock.dueAt(submission.paid_at || new Date()));
   const deliveryFormat = submission.delivery_format === 'word' ? 'Word Document (.docx)' : 'Google Doc';
   const deadline = submission.grant_deadline
     ? new Date(submission.grant_deadline).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
@@ -43,7 +45,7 @@ async function sendConfirmationEmail(submission) {
           <!-- Body -->
           <tr>
             <td style="padding:36px 36px 28px;">
-              <h1 style="margin:0 0 16px;font-size:22px;color:#1a1a1a;">We've got your submission, ${submission.contact_name.split(' ')[0]}.</h1>
+              <h1 style="margin:0 0 16px;font-size:22px;color:#1a1a1a;">We've got your submission, ${escapeHtml(submission.contact_name.split(' ')[0])}.</h1>
               <p style="margin:0 0 20px;font-size:15px;color:#444;line-height:1.7;">
                 Thank you for trusting Wellspring Grants with your application. We've received your intake form and payment, and we're getting to work.
               </p>
@@ -102,7 +104,7 @@ async function sendConfirmationEmail(submission) {
                     <span style="background:#2a6049;color:white;border-radius:50%;width:22px;height:22px;display:inline-block;text-align:center;font-size:12px;line-height:22px;font-weight:bold;">3</span>
                   </td>
                   <td style="vertical-align:top;">
-                    <p style="margin:0;font-size:14px;color:#444;line-height:1.6;"><strong>We deliver within 48 hours</strong> — your completed application arrives as a ${deliveryFormat}, ready to submit.</p>
+                    <p style="margin:0;font-size:14px;color:#444;line-height:1.6;"><strong>We deliver within two business days</strong> — your completed application arrives as a ${deliveryFormat} for your team to review and submit. Estimated writing delivery, assuming complete intake: ${writingDue}. Business days are Monday–Friday, with after-hours orders starting at 9 a.m. Eastern the next business day.</p>
                   </td>
                 </tr>
               </table>

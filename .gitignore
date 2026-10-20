@@ -10,3 +10,6 @@ test-output.txt
 test-prompt.js
 .DS_Store
 CLAUDE.md.backup
+
+# Also ignore a local dependency symlink.
+/node_modules

@@ -4,6 +4,7 @@ const express    = require('express');
 const path       = require('path');
 const { randomUUID } = require('node:crypto');
 const acquisition = require('./acquisition/routes');
+const drafts = require('./acquisition/drafts');
 const { claimPayment } = require('./acquisition/payments');
 const { escape: escapeHtml } = require('./acquisition/validation');
 const basicAuth  = require('express-basic-auth');
@@ -92,6 +93,7 @@ process.on('uncaughtException', (err) => {
 
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 app.use(express.json({ limit: '1mb' }));
+require('./marketing/routes').register(app);
 app.use(express.static('public'));
 
 // ─── Health check ─────────────────────────────────────────────────────────────
@@ -113,6 +115,9 @@ app.use('/admin', basicAuth({
 app.use('/admin', (req,res,next) => req.method === 'GET' ? next() : acquisition.sameOrigin(req,res,next));
 app.get('/admin/leads.js', (req,res) => res.sendFile(path.join(__dirname,'public-admin/leads.js')));
 acquisition.register(app,pool);
+require('./acquisition/funnel').register(app,pool);
+drafts.register(app,pool);
+drafts.startCleanup(pool);
 require('./acquisition/email').startAcknowledgmentWorker(pool);
 
 // ─── Helper functions ─────────────────────────────────────────────────────────
@@ -194,118 +199,8 @@ app.get('/validate-promo', async (req, res) => {
 // Receive form, save as pending_payment, then fork:
 //   — valid promo code → bypass Stripe, fire generation immediately
 //   — no code / invalid code → redirect to Stripe Checkout as normal
-app.post('/checkout', acquisition.limiter(10), acquisition.sameOrigin, async (req, res) => {
-  const id = randomUUID();
-  let rawBody;
-  try { rawBody = require('./acquisition/intake').validate(req.body); }
-  catch (error) { return res.status(400).send(error.message); }
-
-  // Extract promo code before building the submission record.
-  // promo_code and promo_valid are form-only fields — neither is a DB column.
-  const promoCode = rawBody.promo_code ? rawBody.promo_code.toUpperCase() : null;
-  delete rawBody.promo_code;
-  delete rawBody.promo_valid;
-
-  const submission = {
-    id,
-    submitted_at: new Date().toISOString(),
-    status: 'pending_payment',
-    ...rawBody,
-  };
-
-  console.log('\n--- New Submission (awaiting payment) ---');
-  console.log('From:', submission.contact_name, '<' + submission.contact_email + '>');
-  console.log('Org:', submission.org_name);
-  console.log('Funder:', submission.funder_name);
-  if (promoCode) console.log('Promo code submitted:', promoCode);
-  console.log('-----------------------------------------\n');
-
-  try {
-    await createSubmission(submission);
-  } catch (err) {
-    console.error('Failed to save submission:', err.message);
-    return res.status(500).send('Submission could not be saved. Please try again or contact hello@wellspringgrants.com.');
-  }
-
-  // ── Promo code path ────────────────────────────────────────────────────────
-  // Validate independently of anything the frontend sent — the backend is
-  // the only authority on whether a code is valid.
-  if (promoCode) {
-    const promoRecord = await validatePromoCode(promoCode);
-
-    if (promoRecord) {
-      // One promo use per email address — check if this email has already used any promo code
-      const priorUse = await pool.query(
-        'SELECT COUNT(*) FROM submissions WHERE contact_email = $1 AND promo_code_used IS NOT NULL',
-        [submission.contact_email]
-      );
-      const alreadyUsed = parseInt(priorUse.rows[0].count, 10) > 0;
-
-      if (alreadyUsed) {
-        // Silently fall through to Stripe — no error shown to client
-        console.log(`Promo code blocked for repeat email (${submission.contact_email}), proceeding to Stripe`);
-      } else {
-      // Redeem the code and mark the submission as a comp
-      await redeemPromoCode(promoCode);
-      await updateSubmission(id, {
-        status:          'generating',
-        is_comp:         true,
-        promo_code_used: promoCode,
-        paid_at:         new Date().toISOString(),
-      });
-
-      // Fire generation and email — identical to the paid webhook path
-      generateGrant(id).catch(err => {
-        console.error('Generation failed (comp):', id, err.message);
-      });
-
-      sendConfirmationEmail(submission).catch(err => {
-        console.error('Confirmation email failed (comp):', id, err.message);
-      });
-
-      sendAdminNotificationEmail(submission).catch(err => {
-        console.error('Admin notification failed (comp):', id, err.message);
-      });
-
-      console.log(`Comp submission processed (${promoCode}): ${id}`);
-      return res.redirect('/confirmation.html');
-      } // end !alreadyUsed
-    }
-
-    // Code was submitted but is invalid/expired/already used — fall through to Stripe
-    console.log(`Promo code not applied (${promoCode}), proceeding to Stripe`);
-  }
-
-  // ── Stripe path (no code, or invalid code) ─────────────────────────────────
-  try {
-    const session = await stripe.checkout.sessions.create({
-      payment_method_types: ['card'],
-      line_items: [{
-        price_data: {
-          currency: 'usd',
-          product_data: {
-            name: 'Grant Application — Single',
-            description: `${submission.org_name} · ${submission.funder_name}`,
-          },
-          unit_amount: 45000, // $450.00 in cents
-        },
-        quantity: 1,
-      }],
-      mode: 'payment',
-      customer_email: submission.contact_email,
-      metadata: { submissionId: id },
-      success_url: `${process.env.APP_URL}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url:  `${process.env.APP_URL}/payment-cancelled`,
-    });
-
-    await updateSubmission(id, {stripe_session_id:session.id});
-    await acquisition.recordCheckout(pool,req,id,session.id);
-    res.redirect(303, session.url);
-  } catch (err) {
-    console.error('Stripe error:', err.message);
-    res.status(500).send('Payment setup failed. Please try again or contact hello@wellspringgrants.com.');
-  }
-});
+app.post('/checkout', acquisition.limiter(10), acquisition.sameOrigin,
+  require('./acquisition/checkout').createCheckoutHandler({pool,createSubmission,updateSubmission,validatePromoCode,redeemPromoCode,stripe,generateGrant,sendConfirmationEmail,sendAdminNotificationEmail}));
 
 // Stripe redirects here after successful payment.
 // Grant generation is now triggered exclusively by the /webhook route.

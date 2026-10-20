@@ -3,7 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Wellspring Grants — Intake Form</title>
+  <title>Start Your Grant Application | Wellspring Grants</title>
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="description" content="Prepare a nonprofit grant application with step-by-step intake, an optional encrypted saved draft and clear scope before payment.">
+  <link rel="canonical" href="https://wellspringgrants.com/apply">
+  <link rel="stylesheet" href="/intake.css">
   <style>
     * {
       box-sizing: border-box;
@@ -211,18 +215,29 @@
     <h1>Grant Writing Intake Form</h1>
     <p class="intro">
       <a href="/fit">Unsure about eligibility or your deadline? Check grant fit before paying.</a><br>Tell us about your organization and the grant you're applying for. We'll use this
-      to draft a complete, targeted application — delivered within 48 hours after payment and complete intake.
+      to draft a complete, targeted application — delivered within two business days after payment and complete intake.
       <br><br>
       We currently support foundation and community grants. Federal grants (Grants.gov) are not yet available.
     </p>
 
-    <form action="/checkout" method="POST">
+    <p class="intake-links"><a href="/resources/grant-application-checklist">What to prepare</a> · <a href="/sample-grant-application">See a sample</a> · <a href="/pricing">Pricing and scope</a></p>
+    <div class="intake-tools intake-enhanced" hidden>
+      <p><strong>Need to come back later?</strong></p>
+      <p class="save-explanation">Choose Save draft to store an encrypted copy on our server for seven days. Return to this page in the same browser to resume. No payment, email subscription or delivery reservation is created. Avoid saving on a shared device. <a href="/privacy">How saved drafts work</a>.</p>
+      <div class="draft-actions"><button type="button" id="save-draft">Save draft</button><button type="button" id="resume-draft" hidden>Resume saved draft</button><button type="button" id="discard-draft" hidden>Delete saved copy</button></div>
+      <p id="draft-status" class="draft-status" role="status" aria-live="polite"></p>
+    </div>
+    <ol class="progress-steps intake-enhanced" hidden aria-label="Application steps"><li><button type="button">1. Organization</button></li><li><button type="button">2. Opportunity</button></li><li><button type="button">3. Project &amp; budget</button></li><li><button type="button">4. Review &amp; contact</button></li></ol>
+    <p id="step-status" class="intake-enhanced" hidden aria-live="polite"></p>
+    <form id="application-intake" action="/checkout" method="POST">
+      <div id="intake-error" class="form-error" role="alert" tabindex="-1"></div>
+      <fieldset class="intake-step" data-intake-step><legend>Organization information</legend>
 
       <p class="section-title">About Your Organization</p>
 
       <div class="form-group">
         <label for="org_name">Organization Name <span class="required-star">*</span></label>
-        <input type="text" id="org_name" name="org_name" placeholder="e.g. River Valley Food Pantry" required>
+        <input type="text" autocomplete="organization" id="org_name" name="org_name" placeholder="e.g. River Valley Food Pantry" required>
       </div>
 
       <div class="form-group">
@@ -239,7 +254,7 @@
 
       <div class="form-group">
         <label for="track_record">Track Record <span class="required-star">*</span></label>
-        <p class="hint">2–3 concrete past accomplishments or completed projects. Use numbers where you can — this is what funders check your capacity against.</p>
+        <p class="hint">Describe real accomplishments or completed projects. If the organization is new, say so and describe relevant experience honestly. Distinguish plans from completed results; never invent a track record.</p>
         <textarea id="track_record" name="track_record" placeholder="e.g. Delivered 12,000 meals in 2025; expanded from 1 to 3 counties since 2022; completed a $40,000 USDA grant on time and under budget." required></textarea>
       </div>
 
@@ -259,30 +274,27 @@
         <label>Authorized Signer <span class="required-star">*</span></label>
         <p class="hint">The person authorized to submit grant applications on behalf of your organization (typically Executive Director or Board Chair)</p>
         <div class="row">
-          <input type="text" id="signer_name" name="signer_name" placeholder="Full Legal Name" required>
-          <input type="text" id="signer_title" name="signer_title" placeholder="Title (e.g. Executive Director)" required>
+          <input type="text" aria-label="Authorized signer full name" id="signer_name" name="signer_name" placeholder="Full Legal Name" required>
+          <input type="text" aria-label="Authorized signer title" id="signer_title" name="signer_title" placeholder="Title (e.g. Executive Director)" required>
         </div>
       </div>
 
       <div class="form-group">
         <label for="org_phone">Organization Phone Number <span class="required-star">*</span></label>
-        <input type="tel" id="org_phone" name="org_phone" placeholder="e.g. (512) 555-0100" required>
+        <input type="tel" autocomplete="tel" id="org_phone" name="org_phone" placeholder="e.g. (512) 555-0100" required>
       </div>
 
       <div class="form-group">
         <label>Full Mailing Address <span class="required-star">*</span></label>
-        <input type="text" id="org_street" name="org_street" placeholder="Street Address" style="margin-bottom:10px;" required>
-        <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:12px;">
-          <input type="text" id="org_city" name="org_city" placeholder="City" required>
-          <input type="text" id="org_state" name="org_state" placeholder="State" required>
-          <input type="text" id="org_zip" name="org_zip" placeholder="ZIP" pattern="[0-9]{5}(-[0-9]{4})?" title="Enter a 5-digit ZIP code" required>
+        <input type="text" aria-label="Street address" autocomplete="street-address" id="org_street" name="org_street" placeholder="Street Address" style="margin-bottom:10px;" required>
+        <div class="address-grid" style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:12px;">
+          <input type="text" aria-label="City" autocomplete="address-level2" id="org_city" name="org_city" placeholder="City" required>
+          <input type="text" aria-label="State" autocomplete="address-level1" id="org_state" name="org_state" placeholder="State" required>
+          <input type="text" aria-label="ZIP code" autocomplete="postal-code" id="org_zip" name="org_zip" placeholder="ZIP" pattern="[0-9]{5}(-[0-9]{4})?" title="Enter a 5-digit ZIP code" required>
         </div>
       </div>
 
-      <div class="form-group">
-        <label for="org_location">City / State <span class="required-star">*</span></label>
-        <input type="text" id="org_location" name="org_location" placeholder="e.g. Portland, OR" required>
-      </div>
+      <input type="hidden" id="org_location" name="org_location">
 
       <div class="form-group">
         <label>501(c)(3) Status <span class="required-star">*</span></label>
@@ -294,7 +306,7 @@
         </div>
       </div>
 
-      <hr class="section-divider">
+      </fieldset><fieldset class="intake-step" data-intake-step><legend>Grant opportunity</legend>
       <p class="section-title">About the Grant</p>
 
       <div class="form-group">
@@ -317,17 +329,18 @@
       </div>
 
       <div class="form-group">
-        <label for="grant_deadline">Application Deadline <span class="required-star">*</span></label>
-        <input type="date" id="grant_deadline" name="grant_deadline" required>
+        <label for="grant_deadline">Funder Deadline Date <span class="required-star">*</span></label>
+        <input type="date" id="grant_deadline" name="grant_deadline" required><p class="hint">Allow two business days for writing plus time for your review, attachments and submission. If the cutoff is close, <a href="/fit">check fit before paying</a>.</p>
+        <div class="row"><div><label for="deadline_time">Cutoff time, if known</label><input type="time" id="deadline_time" name="deadline_time"></div><div><label for="deadline_timezone">Funder timezone</label><select id="deadline_timezone" name="deadline_timezone"><option value="America/New_York">Eastern</option><option value="America/Chicago">Central</option><option value="America/Denver">Mountain</option><option value="America/Los_Angeles">Pacific</option><option value="America/Anchorage">Alaska</option><option value="Pacific/Honolulu">Hawaii</option><option value="UTC">UTC</option></select></div></div>
       </div>
 
       <div class="form-group">
-        <label for="special_requirements">Special Requirements</label>
-        <p class="hint">Paste any specific instructions here: word limits per section, required headings, formatting rules, or anything the funder explicitly asks for.</p>
-        <textarea id="special_requirements" name="special_requirements" placeholder="e.g. Needs statement: 300 words max. Project narrative: 500 words max. Must include a sustainability plan section."></textarea>
+        <label for="special_requirements">Funder Questions &amp; Requirements <span class="required-star">*</span></label>
+        <p class="hint">Paste the actual application questions, word/character limits, required headings and attachment instructions. If no specific limits are stated, say so. For a login-protected portal, copy the prompts; do not share passwords.</p>
+        <textarea required id="special_requirements" name="special_requirements" placeholder="e.g. Needs statement: 300 words max. Project narrative: 500 words max. Must include a sustainability plan section."></textarea>
       </div>
 
-      <hr class="section-divider">
+      </fieldset><fieldset class="intake-step" data-intake-step><legend>Project and budget</legend>
       <p class="section-title">About the Project</p>
 
       <div class="form-group">
@@ -370,18 +383,19 @@
         </div>
         <div class="form-group">
           <label for="annual_budget">Annual Operating Budget ($) <span class="required-star">*</span></label>
-          <p class="hint" style="margin-bottom:8px;">This figure must exactly match your most recent Form 990 or audited financial statement. Mismatches are a common cause of disqualification.</p>
+          <p class="hint" style="margin-bottom:8px;">Use your organization’s actual operating budget and identify its fiscal period/source below. Explain material differences from other financial records in the budget context.</p>
           <input type="number" id="annual_budget" name="annual_budget" placeholder="e.g. 180000" min="0" required>
         </div>
       </div>
 
       <div class="form-group">
+        <label for="financial_period">Operating budget fiscal period &amp; source</label><input id="financial_period" name="financial_period" type="text" maxlength="300" placeholder="e.g. FY 2026 board-approved operating budget"><p class="hint">Optional context; do not upload or paste private financial statements here.</p><br>
         <label for="budget_breakdown">How Will Funds Be Used? <span class="required-star">*</span></label>
         <p class="hint">A rough budget breakdown helps us write the financials section.</p>
         <textarea id="budget_breakdown" name="budget_breakdown" placeholder="e.g. $18,000 vehicle purchase, $5,000 staff (part-time driver, 6 months), $2,000 fuel and maintenance." required></textarea>
       </div>
 
-      <hr class="section-divider">
+      </fieldset><fieldset class="intake-step" data-intake-step><legend>Review and contact</legend>
       <p class="section-title">Delivery & Contact</p>
 
       <div class="form-group">
@@ -395,11 +409,11 @@
       <div class="row">
         <div class="form-group">
           <label for="contact_name">Your Name <span class="required-star">*</span></label>
-          <input type="text" id="contact_name" name="contact_name" placeholder="e.g. Maria Gonzalez" required>
+          <input type="text" autocomplete="name" id="contact_name" name="contact_name" placeholder="e.g. Maria Gonzalez" required>
         </div>
         <div class="form-group">
           <label for="contact_email">Email Address <span class="required-star">*</span></label>
-          <input type="email" id="contact_email" name="contact_email" placeholder="e.g. maria@riverfoodpantry.org" required>
+          <input type="email" autocomplete="email" id="contact_email" name="contact_email" placeholder="e.g. maria@riverfoodpantry.org" required>
         </div>
       </div>
 
@@ -434,15 +448,19 @@
       <div style="background:#f0f7f4;border:1px solid #c3ddd4;border-radius:6px;padding:16px 20px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;">
         <div>
           <strong style="font-size:15px;">Single Grant Application</strong>
-          <div style="font-size:13px;color:#555;margin-top:2px;">Delivered within 48 hours as a Google Doc or Word file</div>
+          <div style="font-size:13px;color:#555;margin-top:2px;">Editable Google Doc or Word file · two business days</div>
         </div>
         <div id="price-display" style="font-size:22px;font-weight:bold;color:#2a6049;">$450</div>
       </div>
 
-      <button type="submit">Continue to Payment — $450 &rarr;</button>
+      <div class="intake-review intake-enhanced" hidden><h2>Review before checkout</h2><dl id="review-summary"></dl><p id="delivery-estimate" class="delivery-estimate"></p></div>
+      <div class="legal-ack"><label><input type="checkbox" name="purchase_terms_confirmed" required value="yes"><span>I have reviewed <a href="/pricing">scope and pricing</a>, <a href="/terms">service terms</a> and the <a href="/privacy">privacy notice</a>. The $450 USD order includes one revision round within 14 days of delivery; additional rounds cost $50 each. Orders cannot be canceled or refunded after payment. My organization reviews and submits the application; funding is not guaranteed.</span></label></div>
+      </fieldset>
+      <div class="step-buttons intake-enhanced" hidden><button type="button" data-back>← Previous</button><button type="button" data-next>Continue →</button></div>
+      <button id="checkout-submit" type="submit">Continue to Payment — $450 &rarr;</button>
 
       <p class="footer-note">
-        We'll review your submission and deliver a complete grant draft within 48 hours after payment and complete intake.<br>
+        Writing delivery: two business days after payment and complete intake. Business days are Monday–Friday; orders outside 9 a.m.–5 p.m. Eastern start at 9 a.m. the next business day.<br>
         <a href="/privacy">Privacy notice</a> · Funding is not guaranteed. Questions? Email us at hello@wellspringgrants.com
       </p>
     </form>
@@ -496,5 +514,8 @@
       }
     });
   </script>
+  <script src="/measurement.js" defer></script>
+  <script src="/business-clock.js" defer></script>
+  <script src="/intake.js" defer></script>
 </body>
 </html>

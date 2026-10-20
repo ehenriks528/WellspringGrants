@@ -11,7 +11,9 @@
     "import": "node db/import-existing.js",
     "seed": "node --env-file=.env.local db/seed.js",
     "seed:prod": "node db/seed.js",
-    "test": "node --test test/*.test.js"
+    "test": "node --test test/*.test.js",
+    "build:marketing": "node marketing/build.js",
+    "prestart": "npm run migrate && npm run build:marketing"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.89.0",

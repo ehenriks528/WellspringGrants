@@ -62,7 +62,7 @@ app.post('/webhook',
 
     try {
       if (['checkout.session.completed','checkout.session.async_payment_succeeded'].includes(event.type)) {
-        await claimPayment(pool, event.data.object);
+        await claimPayment(pool, event.data.object, {expectedLive:process.env.STRIPE_SECRET_KEY.startsWith('sk_live_')});
       }
     } catch (error) {
       console.error('Webhook processing failed:', event.id);

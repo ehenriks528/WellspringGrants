@@ -40,6 +40,9 @@ const row=async id=>(await pool.query('SELECT * FROM submissions WHERE id=$1',[i
 test('payment and jobs commit together; a failed queue insert rolls back payment and revenue',async()=>{
  const id=await pending();await pool.query('UPDATE submissions SET stripe_session_id=$2 WHERE id=$1',[id,'cs_'+id]);
  const session={id:'cs_'+id,mode:'payment',payment_status:'paid',amount_total:45000,currency:'usd',livemode:false,metadata:{submissionId:id}};
+ assert.equal(await claimPayment(pool,session,{expectedLive:true}),null);
+ assert.equal(await claimPayment(pool,{...session,livemode:true},{expectedLive:false}),null);
+ assert.equal((await row(id)).status,'pending_payment');
  const failing={connect:async()=>{const client=await pool.connect();return {query:(sql,args)=>{if(sql.includes('INSERT INTO fulfillment_jobs'))throw new Error('Synthetic queue outage');return client.query(sql,args);},release:()=>client.release()};}};
  await assert.rejects(claimPayment(failing,session));assert.equal((await row(id)).status,'pending_payment');
  assert.equal((await pool.query('SELECT count(*)::int n FROM acquisition_events WHERE submission_id=$1',[id])).rows[0].n,0);

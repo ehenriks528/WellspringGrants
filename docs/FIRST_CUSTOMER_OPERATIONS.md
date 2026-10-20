@@ -65,3 +65,9 @@ References: PostgreSQL locking documentation:
 https://www.postgresql.org/docs/current/sql-select.html
 Resend idempotency documentation:
 https://resend.com/docs/dashboard/emails/idempotency-keys
+
+Payment callbacks must match the configured Stripe key mode. Test-mode acceptance
+does not prove live-key readiness. Customer email copy uses the confirmed revision
+policy and the business identity; no personal-name or extra response-time promise
+is added. Calendar-only grant deadlines are formatted in UTC so they do not
+move to the previous date on an Eastern-time host.

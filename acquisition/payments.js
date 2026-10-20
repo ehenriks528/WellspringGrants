@@ -1,7 +1,8 @@
 const {enqueue}=require('./fulfillment');
 // The database claim, conversion and fulfillment jobs are committed together. Duplicate webhooks
 // cannot count twice or start a second generation. No browser event is revenue.
-async function claimPayment(pool, session) {
+async function claimPayment(pool, session, options={}) {
+  if (typeof options.expectedLive === 'boolean' && session.livemode !== options.expectedLive) return null;
   if (session.mode !== 'payment' || session.payment_status !== 'paid' || session.currency !== 'usd' || session.amount_total !== 45000 || !session.metadata?.submissionId) return null;
   const client = await pool.connect();
   try {

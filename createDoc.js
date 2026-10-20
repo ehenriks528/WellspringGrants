@@ -281,12 +281,10 @@ async function addHeaderAndFooter(docs, docId, submission) {
   const headerId = hRes.data.replies[0].createHeader.headerId;
 
   // Create footer
-  const fRes = await docs.documents.batchUpdate({ documentId: docId, requestBody: { requests: [{
+  await docs.documents.batchUpdate({ documentId: docId, requestBody: { requests: [{
     createFooter: { type: 'DEFAULT' }
   }]}});
-  const footerId = fRes.data.replies[0].createFooter.headerId || fRes.data.replies[0].createFooter?.footerId;
-
-  // Actually need to get footer ID from document style
+  // Read the created footer's segment from the document style.
   const docSnap = await docs.documents.get({ documentId: docId });
   const actualFooterId = docSnap.data.documentStyle.defaultFooterId;
 
@@ -301,46 +299,26 @@ async function addHeaderAndFooter(docs, docId, submission) {
     insertText: { location: { segmentId: headerId, index: 0 }, text: headerText }
   });
 
-  // Insert footer text + page number
+  // Docs API has no insertPageNumber request. Use a complete text footer so an
+  // unsupported request cannot prevent the following header/footer styling.
+  // https://developers.google.com/workspace/docs/api/reference/rest/v1/documents/request
   if (actualFooterId) {
     requests.push({
       insertText: {
         location: { segmentId: actualFooterId, index: 0 },
-        text: 'hello@wellspringgrants.com\tPage '
+        text: 'hello@wellspringgrants.com\tWellspring Grants'
       }
     });
   }
 
   await docs.documents.batchUpdate({ documentId: docId, requestBody: { requests } });
 
-  // Insert page number field into footer
-  if (actualFooterId) {
-    const footerSnap = await docs.documents.get({ documentId: docId });
-    const footerContent = footerSnap.data.footers?.[actualFooterId]?.content || [];
-    let pageNumIdx = 0;
-    for (const el of footerContent) {
-      if (el.paragraph) {
-        for (const pe of el.paragraph.elements || []) {
-          if (pe.textRun && pe.textRun.content.includes('Page ')) {
-            pageNumIdx = pe.endIndex - 1; // insert after "Page "
-          }
-        }
-      }
-    }
-
-    if (pageNumIdx > 0) {
-      await docs.documents.batchUpdate({ documentId: docId, requestBody: { requests: [{
-        insertPageNumber: { location: { segmentId: actualFooterId, index: pageNumIdx }, onFirstPage: false }
-      }]}});
-    }
-  }
-
-  // Style header: Arial 9pt, grey, tab stop at 6.5 inches (468pt) for right-align
+  // Style header with writable paragraph properties (tabStops is read-only).
   const hSnap = await docs.documents.get({ documentId: docId });
   const hContent = hSnap.data.headers?.[headerId]?.content || [];
   let hParaStart = 1, hParaEnd = 2;
   for (const el of hContent) {
-    if (el.paragraph) { hParaStart = el.startIndex; hParaEnd = el.endIndex; break; }
+    if (el.paragraph) { hParaStart = el.startIndex ?? 0; hParaEnd = el.endIndex; break; }
   }
 
   const hStyleReqs = [
@@ -348,7 +326,6 @@ async function addHeaderAndFooter(docs, docId, submission) {
       updateParagraphStyle: {
         range: { startIndex: hParaStart, endIndex: hParaEnd, segmentId: headerId },
         paragraphStyle: {
-          tabStops: [{ offset: { magnitude: 468, unit: 'PT' }, alignment: 'END' }],
           borderBottom: {
             color: { color: { rgbColor: C.hrBorder } },
             width: { magnitude: 0.5, unit: 'PT' },
@@ -357,7 +334,7 @@ async function addHeaderAndFooter(docs, docId, submission) {
           },
           spaceBelow: { magnitude: 6, unit: 'PT' }
         },
-        fields: 'tabStops,borderBottom,spaceBelow'
+        fields: 'borderBottom,spaceBelow'
       }
     },
     {
@@ -381,7 +358,7 @@ async function addHeaderAndFooter(docs, docId, submission) {
     const fContent = fSnap.data.footers?.[actualFooterId]?.content || [];
     let fParaStart = 1, fParaEnd = 2;
     for (const el of fContent) {
-      if (el.paragraph) { fParaStart = el.startIndex; fParaEnd = el.endIndex; break; }
+      if (el.paragraph) { fParaStart = el.startIndex ?? 0; fParaEnd = el.endIndex; break; }
     }
 
     await docs.documents.batchUpdate({ documentId: docId, requestBody: { requests: [
@@ -389,7 +366,6 @@ async function addHeaderAndFooter(docs, docId, submission) {
         updateParagraphStyle: {
           range: { startIndex: fParaStart, endIndex: fParaEnd, segmentId: actualFooterId },
           paragraphStyle: {
-            tabStops: [{ offset: { magnitude: 468, unit: 'PT' }, alignment: 'END' }],
             borderTop: {
               color: { color: { rgbColor: C.hrBorder } },
               width: { magnitude: 0.5, unit: 'PT' },
@@ -398,7 +374,7 @@ async function addHeaderAndFooter(docs, docId, submission) {
             },
             spaceAbove: { magnitude: 6, unit: 'PT' }
           },
-          fields: 'tabStops,borderTop,spaceAbove'
+          fields: 'borderTop,spaceAbove'
         }
       },
       {

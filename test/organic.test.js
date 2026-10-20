@@ -78,6 +78,7 @@ test('public pages, canonical redirects, sitemap, private-route index controls a
     const html=await response.text();
     assert.match(html,new RegExp('rel="canonical" href="https://wellspringgrants.com'+(page.path==='/'?'/':page.path)+'"'));
     assert.equal((html.match(/<h1(?: |>)/g)||[]).length,1,page.path);
+    assert.ok(html.indexOf('/source-attribution.js')<html.indexOf('/measurement.js'),'Attribution policy loads before measurement');
     const links=[...html.matchAll(/(?:href|src)="(\/[^"#?]*)"/g)].map(m=>m[1]);
     for(const link of new Set(links)){
       if(['/fit','/apply'].includes(link))continue;
@@ -90,6 +91,14 @@ test('public pages, canonical redirects, sitemap, private-route index controls a
   assert.ok(!sitemap.includes('/apply'));assert.ok(!sitemap.includes('/fit'));
   assert.equal((await fetch(base+'/apply')).headers.get('x-robots-tag'),'noindex, nofollow');
   assert.match(await (await fetch(base+'/robots.txt')).text(),/Sitemap: https:\/\/wellspringgrants.com\/sitemap.xml/);
+});
+test('privacy headers suppress optional funnel events independently of browser scripts',async()=>{
+ const before=(await pool.query('SELECT count(*)::int n FROM organic_funnel_events')).rows[0].n;
+ for(const headers of [{DNT:'1'},{DNT:'yes'},{'Sec-GPC':'1'}]){
+  const response=await fetch(base+'/api/organic-events',{method:'POST',headers:{Origin:origin,'Content-Type':'application/json',...headers},body:JSON.stringify({id:randomUUID(),event:'page_view',page:'/pricing'})});
+  assert.equal(response.status,204);
+ }
+ assert.equal((await pool.query('SELECT count(*)::int n FROM organic_funnel_events')).rows[0].n,before);
 });
 test('sample narrative answers stay within their displayed word limits',()=>{
   const html=fs.readFileSync('public/sample-grant-application.html','utf8');

@@ -1,5 +1,6 @@
 const path=require('node:path');
 const {sameOrigin,limiter}=require('./routes');
+const {optedOut}=require('../public/source-attribution');
 const pages=new Set([...require('../marketing/manifest').map(p=>p.path),'/fit','/apply']);
 const wrap=fn=>(req,res,next)=>Promise.resolve(fn(req,res,next)).catch(next);
 function validate(body){
@@ -15,6 +16,7 @@ function validate(body){
 }
 function register(app,pool){
   app.post('/api/organic-events',limiter(100),sameOrigin,wrap(async(req,res)=>{
+    if(optedOut(req.get('DNT'))||req.get('Sec-GPC')==='1')return res.status(204).end();
     let event;try{event=validate(req.body);}catch{return res.status(400).json({error:'Invalid event.'});}
     await pool.query('INSERT INTO organic_funnel_events(event_id,event_name,page,step) VALUES($1,$2,$3,$4) ON CONFLICT(event_id) DO NOTHING',[event.id,event.event,event.page,event.step]);
     res.status(204).end();

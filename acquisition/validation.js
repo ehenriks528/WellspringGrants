@@ -1,4 +1,5 @@
 const crypto = require('node:crypto');
+const {normalizeLabel}=require('../public/source-attribution');
 function text(value, max = 2000) {
   if (typeof value !== 'string' || value.length > max) throw new Error('Please check the form fields.');
   return value.trim();
@@ -25,7 +26,7 @@ function lead(body) {
     org_name: text(body.org_name, 160), contact_name: text(body.contact_name, 120),
     email: email(body.email), website: url(body.website), location: text(body.location, 160),
     project: text(body.project, 3000), grant_url: url(body.grant_url), deadline: date(body.deadline),
-    source: text(body.source || 'direct', 100).replace(/[^a-z0-9_./ -]/gi, '')
+    source: normalizeLabel(body.source)
   };
   if (!result.org_name || !result.contact_name || !result.location || result.project.length < 20) throw new Error('Add your organization, name, location, and a short project description (at least 20 characters).');
   return result;

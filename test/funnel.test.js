@@ -33,8 +33,8 @@ test('consent and valid inquiry required; forbidden origin cannot save or acknow
  assert.equal(ackCalls,0);assert.equal((await pool.query('SELECT * FROM acquisition_leads')).rows.length,0);
 });
 test('inquiry, consent, follow-up and event persist before acknowledgment; signed cookie links checkout',async()=>{
- const response=await post('/api/fit',inquiry);assert.equal(response.status,201);assert.equal(ackCalls,1);
- const rows=(await pool.query('SELECT * FROM acquisition_leads')).rows;assert.equal(rows.length,1);assert.ok(rows[0].consent_at);assert.ok(rows[0].follow_up_at);
+ const response=await post('/api/fit',{...inquiry,source:'approved_outreach/first_customer'});assert.equal(response.status,201);assert.equal(ackCalls,1);
+ const rows=(await pool.query('SELECT * FROM acquisition_leads')).rows;assert.equal(rows.length,1);assert.ok(rows[0].consent_at);assert.ok(rows[0].follow_up_at);assert.equal(rows[0].source,'email/first_customer');
  const cookie=response.headers.get('set-cookie').split(';')[0];const req={headers:{cookie}};
  assert.equal(readLead(req,process.env.ADMIN_PASSWORD),rows[0].id);
  await recordCheckout(pool,req,'paid-test','cs_test');
@@ -51,7 +51,7 @@ test('a paid webhook must match amount, currency, payment status, saved session 
  for(const invalid of [{payment_status:'unpaid'},{currency:'eur'},{amount_total:1},{mode:'subscription'},{metadata:{}}])assert.equal(await claimPayment(pool,{...session,...invalid}),null);
  assert.equal(await claimPayment(pool,{...session,id:'cs_wrong'}),null);
  assert.ok(await claimPayment(pool,session));assert.equal(await claimPayment(pool,session),null);
- const events=(await pool.query("SELECT * FROM acquisition_events WHERE event='purchase'")).rows;assert.equal(events.length,1);assert.equal(events[0].live,false);assert.equal(events[0].amount_cents,45000);
+ const events=(await pool.query("SELECT * FROM acquisition_events WHERE event='purchase'")).rows;assert.equal(events.length,1);assert.equal((await pool.query("SELECT l.source FROM acquisition_events e JOIN acquisition_leads l ON l.id=e.lead_id WHERE e.event='purchase' AND e.external_id='cs_test'")).rows[0].source,'email/first_customer');assert.equal(events[0].live,false);assert.equal(events[0].amount_cents,45000);
  const metrics=await (await fetch(base+'/admin/api/leads',{headers:{Authorization:auth}})).json();assert.equal(metrics.metrics.paid_customers,0);assert.equal(metrics.metrics.revenue_cents,0);
  await pool.query("INSERT INTO submissions(id,status,stripe_session_id,is_comp) VALUES('comp-test','pending_payment','cs_comp',true)");
  assert.equal(await claimPayment(pool,{...session,id:'cs_comp',metadata:{submissionId:'comp-test'}}),null);
@@ -91,4 +91,18 @@ test('legacy in-flight checkout can be claimed only when its customer email matc
  const session={id:'cs_legacy',mode:'payment',payment_status:'paid',amount_total:45000,currency:'usd',livemode:false,metadata:{submissionId:'legacy-test'}};
  assert.equal(await claimPayment(pool,{...session,customer_email:'wrong@example.org'}),null);
  assert.ok(await claimPayment(pool,{...session,customer_email:'legacy@example.org'}));
+});
+
+test('the inquiry endpoint independently normalizes coarse labels and respects privacy headers',async()=>{
+ const cases=[
+  {source:'private@example.org',headers:{},expected:'unattributed'},
+  {source:'email/resources',headers:{DNT:'1'},expected:'unattributed'},
+  {source:'email/resources',headers:{'Sec-GPC':'1'},expected:'unattributed'},
+  {source:'google/resources',headers:{},expected:'search/resources'},
+  {source:undefined,headers:{},expected:'unattributed'},
+ ];
+ for(const [index,item] of cases.entries()){
+  const email='source-check-'+index+'@example.org';const response=await post('/api/fit',{...inquiry,email,source:item.source},item.headers);assert.equal(response.status,201);
+  const saved=(await pool.query('SELECT source FROM acquisition_leads WHERE email=$1',[email])).rows[0];assert.equal(saved.source,item.expected);
+ }
 });

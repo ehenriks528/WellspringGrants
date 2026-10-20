@@ -4,8 +4,8 @@ const businessClock = require('./public/business-clock');
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-async function sendChecked(options) {
-  const result = await resend.emails.send(options);
+async function sendChecked(options,idempotencyKey) {
+  const result = await resend.emails.send(options,idempotencyKey?{idempotencyKey}:undefined);
   if (result.error || !result.data?.id) throw new Error('Email provider did not accept message');
   return result;
 }
@@ -131,9 +131,9 @@ async function sendConfirmationEmail(submission) {
 </body>
 </html>
       `
-    });
+    },`order-confirmation/${submission.id}`);
 
-    console.log(`Confirmation email sent to ${escapeHtml(submission.contact_email)}`);
+    console.log(`Confirmation email accepted for submission ${submission.id}`);
   } catch (err) {
     // Email failure should never block the main flow
     console.error(`Email failed for submission ${escapeHtml(submission.id)}`);
@@ -310,7 +310,7 @@ async function sendDeliveryEmail(submission, docxBuffer = null) {
   };
 
   try {
-    await sendChecked(emailOptions);
+    await sendChecked(emailOptions,`order-delivery/${submission.id}`);
     console.log(`Delivery email sent to ${escapeHtml(submission.contact_email)} (format: ${submission.delivery_format || 'google_doc'})`);
   } catch (err) {
     console.error(`Delivery email failed for ${escapeHtml(submission.contact_email)}:`, err.message);
@@ -412,10 +412,11 @@ async function sendAdminNotificationEmail(submission) {
 </body>
 </html>
       `
-    });
+    },`order-admin/${submission.id}`);
     console.log(`Admin notification sent for submission ${escapeHtml(submission.id)}`);
   } catch (err) {
     console.error(`Admin notification failed for submission ${escapeHtml(submission.id)}:`, err.message);
+    throw err;
   }
 }
 

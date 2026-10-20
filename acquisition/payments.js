@@ -1,4 +1,5 @@
-// The database claim and conversion are committed together. Duplicate webhooks
+const {enqueue}=require('./fulfillment');
+// The database claim, conversion and fulfillment jobs are committed together. Duplicate webhooks
 // cannot count twice or start a second generation. No browser event is revenue.
 async function claimPayment(pool, session) {
   if (session.mode !== 'payment' || session.payment_status !== 'paid' || session.currency !== 'usd' || session.amount_total !== 45000 || !session.metadata?.submissionId) return null;
@@ -10,6 +11,7 @@ async function claimPayment(pool, session) {
       [session.metadata.submissionId, session.id, session.customer_details?.email || session.customer_email || '']);
     const submission = claimed.rows[0];
     if (submission) {
+      await enqueue(client,submission.id);
       await client.query(`INSERT INTO acquisition_events (lead_id,submission_id,event,external_id,amount_cents,currency,live)
         VALUES ((SELECT lead_id FROM acquisition_events WHERE submission_id=$1 AND event='checkout_created' LIMIT 1),$1,'purchase',$2,45000,'usd',$3)
         ON CONFLICT (external_id) DO NOTHING`, [submission.id, session.id, session.livemode === true]);

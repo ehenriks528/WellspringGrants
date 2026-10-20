@@ -3,6 +3,7 @@ const acquisition=require('./routes');
 const service=require('../marketing/service');
 const {validate}=require('./intake');
 const {acceptingOrders}=require('./availability');
+const promos=require('./promos');
 
 // Enhanced intake retains answers after server validation errors.
 // Plain HTML form posts retain a working redirect fallback.
@@ -18,7 +19,7 @@ function checkoutRedirect(req,res,target) {
 }
 
 function createCheckoutHandler(dependencies) {
-  const {pool,createSubmission,updateSubmission,validatePromoCode,redeemPromoCode,stripe,generateGrant,sendConfirmationEmail,sendAdminNotificationEmail}=dependencies;
+  const {pool,createSubmission,updateSubmission,stripe,claimPromo=promos.claimPromo}=dependencies;
   const handler=async(req,res)=>{
 
   if(!acceptingOrders())return checkoutError(req,res,503,'Online orders are temporarily unavailable. Your answers remain on this page. Save a draft or request a grant-fit review at /fit. No order or payment has been created.');
@@ -55,45 +56,10 @@ function createCheckoutHandler(dependencies) {
   // Validate independently of anything the frontend sent — the backend is
   // the only authority on whether a code is valid.
   if (promoCode) {
-    const promoRecord = await validatePromoCode(promoCode);
-
-    if (promoRecord) {
-      // One promo use per email address — check if this email has already used any promo code
-      const priorUse = await pool.query(
-        'SELECT COUNT(*) FROM submissions WHERE contact_email = $1 AND promo_code_used IS NOT NULL',
-        [submission.contact_email]
-      );
-      const alreadyUsed = parseInt(priorUse.rows[0].count, 10) > 0;
-
-      if (alreadyUsed) {
-        // Silently fall through to Stripe — no error shown to client
-        console.log('Promo code blocked for repeat use; standard checkout applies.');
-      } else {
-      // Redeem the code and mark the submission as a comp
-      await redeemPromoCode(promoCode);
-      await updateSubmission(id, {
-        status:          'generating',
-        is_comp:         true,
-        promo_code_used: promoCode,
-        paid_at:         new Date().toISOString(),
-      });
-
-      // Fire generation and email — identical to the paid webhook path
-      generateGrant(id).catch(err => {
-        console.error('Generation failed (comp):', id, err.message);
-      });
-
-      sendConfirmationEmail(submission).catch(err => {
-        console.error('Confirmation email failed (comp):', id, err.message);
-      });
-
-      sendAdminNotificationEmail(submission).catch(err => {
-        console.error('Admin notification failed (comp):', id, err.message);
-      });
-
-      console.log('Complimentary submission processed:',id);
+    const comp=await claimPromo(pool,id,promoCode);
+    if(comp){
+      console.log('Complimentary submission queued:',id);
       return checkoutRedirect(req,res,'/confirmation.html');
-      } // end !alreadyUsed
     }
 
     // Code was submitted but is invalid/expired/already used — fall through to Stripe

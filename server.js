@@ -6,6 +6,7 @@ const { randomUUID } = require('node:crypto');
 const acquisition = require('./acquisition/routes');
 const drafts = require('./acquisition/drafts');
 const { claimPayment } = require('./acquisition/payments');
+const fulfillment=require('./acquisition/fulfillment');
 const { escape: escapeHtml } = require('./acquisition/validation');
 const basicAuth  = require('express-basic-auth');
 const Stripe     = require('stripe');
@@ -61,12 +62,7 @@ app.post('/webhook',
 
     try {
       if (['checkout.session.completed','checkout.session.async_payment_succeeded'].includes(event.type)) {
-        const submission = await claimPayment(pool, event.data.object);
-        if (submission) {
-          generateGrant(submission.id).catch(err => console.error('Generation failed:', submission.id, err.message));
-          sendConfirmationEmail(submission).catch(err => console.error('Confirmation failed:', submission.id, err.message));
-          sendAdminNotificationEmail(submission).catch(err => console.error('Admin notification failed:', submission.id, err.message));
-        }
+        await claimPayment(pool, event.data.object);
       }
     } catch (error) {
       console.error('Webhook processing failed:', event.id);
@@ -119,7 +115,11 @@ acquisition.register(app,pool);
 require('./acquisition/funnel').register(app,pool);
 drafts.register(app,pool);
 drafts.startCleanup(pool);
-require('./acquisition/email').startAcknowledgmentWorker(pool);
+const acknowledgmentTimer=require('./acquisition/email').startAcknowledgmentWorker(pool);
+fulfillment.register(app,pool);
+const fulfillmentWorker=fulfillment.startWorker(pool,{
+  generation:generateGrant,confirmation:sendConfirmationEmail,admin_notification:sendAdminNotificationEmail,
+});
 
 // ─── Helper functions ─────────────────────────────────────────────────────────
 
@@ -293,7 +293,7 @@ app.get('/admin', async (req, res) => {
 <body>
   <div class="header">
     <div>
-      <div class="logo">Wellspring Grants — Admin</div><a href="/admin/leads">Leads &amp; outreach queue →</a>
+      <div class="logo">Wellspring Grants — Admin</div><p><a href="/admin/leads">Leads &amp; outreach →</a> · <a href="/admin/fulfillment">Fulfillment &amp; retries →</a></p>
       <div class="subtitle">${submissions.length} total submission${submissions.length !== 1 ? 's' : ''}</div>
     </div>
     <div class="stats">
@@ -644,7 +644,17 @@ app.use((error,req,res,next) => {
   if (!res.headersSent) res.status(500).json({error:'Please try again or contact hello@wellspringgrants.com.'});
 });
 
-app.listen(PORT, () => {
+const server=app.listen(PORT, () => {
   console.log(`Wellspring Grants is running at http://localhost:${PORT}`);
   console.log(`Admin dashboard: http://localhost:${PORT}/admin`);
 });
+let shuttingDown=false;
+async function shutdown(){
+  if(shuttingDown)return;shuttingDown=true;
+  console.log('Stopping service; unfinished work remains in the durable queue.');
+  clearInterval(acknowledgmentTimer);
+  const timeout=setTimeout(()=>process.exit(0),8000);timeout.unref();
+  const closed=new Promise(resolve=>server.close(resolve));
+  await Promise.all([closed,fulfillmentWorker.stop()]);await pool.end();clearTimeout(timeout);process.exit(0);
+}
+process.on('SIGTERM',shutdown);process.on('SIGINT',shutdown);

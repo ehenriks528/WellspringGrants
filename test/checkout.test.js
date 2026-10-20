@@ -14,8 +14,7 @@ before(async()=>{
     pool:{query:async(sql,args)=>{queries.push({sql,args});if(mode==='unexpected')throw new Error('synthetic db error');return {rows:[{count:'0'}],rowCount:1};}},
     createSubmission:async submission=>submissions.push(submission),
     updateSubmission:async(id,values)=>updates.push({id,values}),
-    validatePromoCode:async()=>mode==='comp'?{code:'SYNTHETIC'}:null,
-    redeemPromoCode:async()=>{},
+    claimPromo:async(pool,id)=>{if(mode!=='comp')return null;updates.push({id,values:{is_comp:true}});return {id,is_comp:true};},
     stripe:{checkout:{sessions:{create:async options=>{if(mode==='provider_failure')throw new Error('Synthetic provider rejection');sessions.push(options);return {id:'cs_test_synthetic',url:'https://checkout.stripe.com/c/pay/cs_test_synthetic'};}}}},
     generateGrant:async()=>{},sendConfirmationEmail:async()=>{},sendAdminNotificationEmail:async()=>{},
   }));

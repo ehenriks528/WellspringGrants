@@ -290,3 +290,14 @@ Operational details: docs/FIRST_CUSTOMER_OPERATIONS.md.
 - [ ] Inspect the header visually on a future authorized document creation.
 
 Scope and rollback: docs/BUYER_SCOPE_DOCUMENT_POLISH.md.
+
+## Coarse source attribution — October 20, 2026
+
+- [x] Preserve approved source/campaign labels across clean public links.
+- [x] Normalize inquiry sources on the server; mark labels unverified in admin.
+- [x] Suppress optional attribution/events for DNT/GPC without browser storage.
+- [x] Align privacy copy and preserve signed inquiry/payment linkage.
+- [x] Pass provider-free tests and isolated real-browser form submission.
+- [ ] Review exact-head CI and draft PR; obtain approval before merge/deploy.
+
+Policy, limits and rollback: docs/SOURCE_ATTRIBUTION.md.

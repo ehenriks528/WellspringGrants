@@ -1,6 +1,7 @@
 const {randomUUID} = require('node:crypto');
 const {lead, text, email, url, date, signLead, readLead} = require('./validation');
 const {acknowledge} = require('./email');
+const {optedOut}=require('../public/source-attribution');
 const wrap = fn => (req,res,next) => Promise.resolve(fn(req,res,next)).catch(next);
 function sameOrigin(req,res,next) {
   const expected = new URL(process.env.APP_URL).origin;
@@ -24,6 +25,7 @@ function register(app,pool,acknowledger=acknowledge) {
     if(req.body.company_fax) return res.status(400).json({error:'Unable to submit inquiry.'});
     let data;
     try { data=lead(req.body); } catch(error) { return res.status(400).json({error:error.message}); }
+    if(optedOut(req.get('DNT'))||req.get('Sec-GPC')==='1')data.source='unattributed';
     const id=randomUUID(), keys=Object.keys(data);
     const client=await pool.connect();
     try {

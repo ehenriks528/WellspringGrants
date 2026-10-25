@@ -301,3 +301,12 @@ Scope and rollback: docs/BUYER_SCOPE_DOCUMENT_POLISH.md.
 - [ ] Review exact-head CI and draft PR; obtain approval before merge/deploy.
 
 Policy, limits and rollback: docs/SOURCE_ATTRIBUTION.md.
+
+## Fit form without its enhancement script — October 20, 2026
+
+- [x] Reproduce the missing-script GET submission putting synthetic answers in the URL and saving no inquiry.
+- [x] Use explicit native POST to the existing fit endpoint with an origin-only referrer.
+- [x] Return readable, no-store/noindex HTML results for native posts without reflecting answers.
+- [x] Preserve JSON submissions, consent/origin checks, source policy and signed checkout linkage.
+- [x] Pass 55 provider-free tests and a native browser submission with fit.js unavailable.
+- [ ] Review exact-head draft PR/CI and obtain approval before merge or deployment.

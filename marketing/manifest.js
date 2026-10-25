@@ -76,7 +76,7 @@ module.exports = [
     "path": "/sample-grant-application",
     "file": "sample-grant-application.html",
     "title": "Sample Nonprofit Grant Application | Wellspring Grants",
-    "description": "Read an annotated fictional nonprofit grant application with funder questions, word limits, an itemized budget and notes explaining the writing choices."
+    "description": "Inspect a completed fictional grant-writing example with source inputs, funder priorities, four answers, word limits, budget calculations and editorial notes."
   },
   {
     "path": "/privacy",

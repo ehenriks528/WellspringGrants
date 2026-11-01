@@ -44,7 +44,7 @@
     const fields=[['Organization',form.elements.org_name.value],['Funder',form.elements.funder_name.value],['Program',form.elements.grant_program.value],['Requested funding',form.elements.amount_requested.value?'$'+Number(form.elements.amount_requested.value).toLocaleString():'Not entered'],['Funder deadline',[form.elements.grant_deadline.value,form.elements.deadline_time.value,form.elements.deadline_timezone.value].filter(Boolean).join(' ')],['Delivery email',form.elements.contact_email.value||'Enter your email above']];
     fields.forEach(([label,value])=>{const dt=document.createElement('dt'),dd=document.createElement('dd');dt.textContent=label;dd.textContent=value||'Not entered';summary.append(dt,dd);});
     const due=window.WellspringClock.dueAt();
-    estimate.textContent='If payment and complete intake were received now, estimated writing delivery would be '+window.WellspringClock.display(due)+'. Your own review, attachments and submission still need time.';
+    estimate.textContent=(form.elements.promo_code.value.trim()?'If your complimentary code were accepted and intake complete now, estimated writing delivery would be ':'If payment and complete intake were received now, estimated writing delivery would be ')+window.WellspringClock.display(due)+'. Your own review, attachments and submission still need time.';
   }
   form.querySelector('[data-next]').addEventListener('click',()=>{if(validate(panels[step])){window.wellspringMeasure?.('intake_step_completed',step+1);show(step+1);}});
   form.querySelector('[data-back]').addEventListener('click',()=>show(step-1));
@@ -61,7 +61,7 @@
     updateLocation();
     window.wellspringMeasure?.('intake_step_completed',4);
     const button=document.getElementById('checkout-submit');
-    button.disabled=true;button.textContent='Preparing secure checkout…';
+    button.disabled=true;button.textContent=form.elements.promo_code.value.trim()?'Checking complimentary application…':'Preparing secure checkout…';
     try{
       // A server validation error stays on this page; answers are never placed in a URL.
       const response=await fetch('/checkout',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded','Accept':'application/json'},body:new URLSearchParams(new FormData(form)).toString()});
@@ -70,7 +70,7 @@
       const target=new URL(data.redirect,location.origin);
       if(target.origin!==location.origin&&target.hostname!=='checkout.stripe.com')throw new Error('Unexpected checkout destination. Contact support.');
       dirty=false;location.assign(target.href);
-    }catch(err){error.textContent=err.message;error.focus();button.disabled=!ordersAvailable;button.textContent='Continue to Payment — $450 →';}
+    }catch(err){error.textContent=err.message;error.focus();button.disabled=!ordersAvailable;button.textContent=form.elements.promo_code.value.trim()?'Check complimentary application →':'Continue to Payment — $450 →';}
   });
   async function request(method,body){
     const response=await fetch('/api/intake-draft',{method,headers:{'Content-Type':'application/json'},...(body?{body:JSON.stringify(body)}:{})});

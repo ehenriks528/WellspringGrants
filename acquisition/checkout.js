@@ -62,11 +62,11 @@ function createCheckoutHandler(dependencies) {
       return checkoutRedirect(req,res,'/confirmation.html');
     }
 
-    // Code was submitted but is invalid/expired/already used — fall through to Stripe
-    console.log('Promo code not applied; standard checkout applies.');
+    // A requested free order must never silently become a paid checkout.
+    return checkoutError(req,res,409,'Your complimentary code could not be applied. No payment checkout was created. Check the code and nonprofit details, or contact hello@wellspringgrants.com.');
   }
 
-  // ── Stripe path (no code, or invalid code) ─────────────────────────────────
+  // ── Stripe path (no code) ─────────────────────────────────
   try {
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],

@@ -59,6 +59,29 @@ test('concurrent promo requests cannot take the last use twice or reuse an email
  const same=await Promise.all([claimPromo(pool,c,'OTHER_A'),claimPromo(pool,d,'OTHER_B')]);assert.equal(same.filter(Boolean).length,1);
  for(const accepted of [...claimed,...same].filter(Boolean))assert.equal((await pool.query('SELECT count(*)::int n FROM fulfillment_jobs WHERE submission_id=$1',[accepted.id])).rows[0].n,3);
 });
+test('first-application pilot binds each code to one nonprofit and rejects alternate-email reuse',async()=>{
+ const ein='123456781';
+ await pool.query("INSERT INTO promo_codes(code,max_uses,first_application_only,eligible_ein) VALUES('PILOT_A',1,true,$1),('PILOT_B',1,true,$1),('PILOT_WRONG',1,true,'123456789'),('PILOT_UNASSIGNED',1,true,NULL)",[ein]);
+ const a=await pending('pilot-one@example.org'),b=await pending('pilot-two@example.org');
+ await pool.query('UPDATE submissions SET ein=$2 WHERE id=$1',[a,'12-3456781']);
+ await pool.query('UPDATE submissions SET ein=$2 WHERE id=$1',[b,ein]);
+ assert.equal(await claimPromo(pool,a,'PILOT_UNASSIGNED'),null);
+ assert.equal(await claimPromo(pool,a,'PILOT_WRONG'),null);
+ assert.equal((await pool.query("SELECT times_used FROM promo_codes WHERE code='PILOT_WRONG'")).rows[0].times_used,0);
+ const claims=await Promise.all([claimPromo(pool,a,'PILOT_A'),claimPromo(pool,b,'PILOT_B')]);
+ assert.equal(claims.filter(Boolean).length,1);
+ assert.equal((await pool.query("SELECT sum(times_used)::int n FROM promo_codes WHERE code IN ('PILOT_A','PILOT_B')")).rows[0].n,1);
+ const accepted=claims.find(Boolean);assert.equal(accepted.is_comp,true);
+ assert.equal((await pool.query("SELECT count(*)::int n FROM acquisition_events WHERE submission_id=$1 AND event='purchase'",[accepted.id])).rows[0].n,0);
+});
+test('first-application pilot excludes a nonprofit with an earlier paid application',async()=>{
+ const prior=await pending('previous@example.org'),next=await pending('different@example.org');
+ await pool.query("UPDATE submissions SET ein='123456782',paid_at=now(),status='draft_ready' WHERE id=$1",[prior]);
+ await pool.query("UPDATE submissions SET ein='12-3456782' WHERE id=$1",[next]);
+ await pool.query("INSERT INTO promo_codes(code,max_uses,first_application_only,eligible_ein) VALUES('PILOT_PRIOR',1,true,'123456782')");
+ assert.equal(await claimPromo(pool,next,'PILOT_PRIOR'),null);
+ assert.equal((await pool.query("SELECT times_used FROM promo_codes WHERE code='PILOT_PRIOR'")).rows[0].times_used,0);
+});
 test('a reclaimed job rejects stale results and heartbeats while the new worker retains ownership',async()=>{
  await only('generation');const id=await accepted();const stale=await jobs.claim(pool,'generation');assert.equal(stale.submission_id,id);
  await pool.query("UPDATE fulfillment_jobs SET lease_until=now()-interval '1 second' WHERE id=$1",[stale.id]);

@@ -171,6 +171,7 @@ app.get('/apply', (req, res) => {
 // Validate a promo code without redeeming it — called by the intake form on blur.
 // Never reveals why a code is invalid beyond the generic message.
 app.get('/validate-promo', async (req, res) => {
+  res.set('Cache-Control','no-store');
   const code  = (req.query.code  || '').trim().toUpperCase();
   const email = (req.query.email || '').trim().toLowerCase();
 
@@ -181,6 +182,13 @@ app.get('/validate-promo', async (req, res) => {
   const record = await validatePromoCode(code);
 
   if (record) {
+    if(record.first_application_only){
+      const ein=String(req.query.ein||'').replace(/[^0-9]/g,'');
+      const allowed=String(record.eligible_ein||'').replace(/[^0-9]/g,'');
+      if(ein.length!==9||allowed!==ein||record.max_uses!==1)return res.json({valid:false});
+      const prior=await pool.query(`SELECT id FROM submissions WHERE regexp_replace(COALESCE(ein,''),'[^0-9]','','g')=$1 AND (paid_at IS NOT NULL OR COALESCE(is_comp,false)=true) LIMIT 1`,[ein]);
+      if(prior.rows.length)return res.json({valid:false});
+    }
     // If an email was provided, check whether it has already used a promo code
     if (email) {
       const priorUse = await pool.query(
@@ -199,7 +207,7 @@ app.get('/validate-promo', async (req, res) => {
 
 // Receive form, save as pending_payment, then fork:
 //   — valid promo code → bypass Stripe, fire generation immediately
-//   — no code / invalid code → redirect to Stripe Checkout as normal
+//   — no code → Stripe; a rejected code stops without paid checkout
 app.post('/checkout', acquisition.limiter(10), acquisition.sameOrigin,
   require('./acquisition/checkout').createCheckoutHandler({pool,createSubmission,updateSubmission,validatePromoCode,redeemPromoCode,stripe,generateGrant,sendConfirmationEmail,sendAdminNotificationEmail}));
 

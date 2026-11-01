@@ -80,3 +80,8 @@ VALUES
    100,
    NOW() + interval '12 months')
 ON CONFLICT (code) DO NOTHING;
+
+-- First-application pilot codes are bound to a verified nonprofit before issuance.
+-- Defaults retain existing separately promised complimentary codes.
+ALTER TABLE promo_codes ADD COLUMN IF NOT EXISTS first_application_only BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE promo_codes ADD COLUMN IF NOT EXISTS eligible_ein TEXT;

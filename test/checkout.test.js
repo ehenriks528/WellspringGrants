@@ -49,6 +49,12 @@ test('a supported complimentary order follows its existing flow without a paid c
   assert.equal(response.status,200);assert.equal((await response.json()).redirect,'/confirmation.html');
   assert.equal(sessions.length,before);assert.ok(updates.some(update=>update.values.is_comp===true));mode='normal';
 });
+test('a rejected complimentary code cannot create a paid checkout',async()=>{
+  mode='normal';const before=sessions.length;
+  const response=await post({...intake,promo_code:'EXPIRED-SYNTHETIC'});
+  assert.equal(response.status,409);assert.match((await response.json()).error,/No payment checkout was created/);
+  assert.equal(sessions.length,before);
+});
 test('production readiness blocks test payments and comp work before any order or provider activity',async()=>{
   const names=['NODE_ENV','PAID_ORDERS_ENABLED','STRIPE_SECRET_KEY'];
   const previous=Object.fromEntries(names.map(name=>[name,process.env[name]]));

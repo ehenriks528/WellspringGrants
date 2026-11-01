@@ -418,6 +418,7 @@
         </div>
       </div>
 
+      <p id="complimentary-scope" class="hint">An approved complimentary code covers one application at $0, with no card or automatic subscription. Five nonprofits are included in the initial pilot; one first application per nonprofit, after scope and eligibility checks. Later applications are $450 each. No testimonial or publicity is required.</p>
       <div class="form-group" id="promo-group">
         <label for="promo_code">Promo Code <span style="font-weight:normal;color:#666">(optional)</span></label>
         <input type="text" id="promo_code" name="promo_code"
@@ -455,7 +456,7 @@
       </div>
 
       <div class="intake-review intake-enhanced" hidden><h2>Review before checkout</h2><dl id="review-summary"></dl><p id="delivery-estimate" class="delivery-estimate"></p></div>
-      <div class="legal-ack"><label><input type="checkbox" name="purchase_terms_confirmed" required value="yes"><span>I have reviewed <a href="/pricing">scope and pricing</a>, <a href="/terms">service terms</a> and the <a href="/privacy">privacy notice</a>. The $450 USD order includes one revision round within 14 days of delivery; additional rounds cost $50 each. Orders cannot be canceled or refunded after payment. My organization reviews and submits the application; funding is not guaranteed.</span></label></div>
+      <div class="legal-ack"><label><input type="checkbox" name="purchase_terms_confirmed" required value="yes"><span>I have reviewed <a href="/pricing">scope and pricing</a>, <a href="/terms">service terms</a> and the <a href="/privacy">privacy notice</a>. The standard price is $450 USD; an accepted complimentary code makes this application $0. Each order includes one revision round within 14 days of delivery; additional rounds cost $50 each. For paid orders, orders cannot be canceled or refunded after payment. No payment or automatic future charge is required for an accepted complimentary application. My organization reviews and submits the application; funding is not guaranteed.</span></label></div>
       </fieldset>
       <div class="step-buttons intake-enhanced" hidden><button type="button" data-back>← Previous</button><button type="button" data-next>Continue →</button></div>
       <button id="checkout-submit" type="submit">Continue to Payment — $450 &rarr;</button>
@@ -473,9 +474,17 @@
     const promoValid    = document.getElementById('promo_valid');
     const priceDisplay  = document.getElementById('price-display');
 
+    function resetPromo(){
+      promoValid.value='false';
+      priceDisplay.textContent='$450';
+      promoFeedback.style.display='none';
+      document.getElementById('checkout-submit').textContent=promoInput.value.trim()?'Check complimentary application →':'Continue to Payment — $450 →';
+    }
+    for(const field of [promoInput,document.getElementById('ein'),document.getElementById('contact_email')])field.addEventListener('input',resetPromo);
     promoInput.addEventListener('blur', async function () {
       const code  = promoInput.value.trim();
       const email = (document.getElementById('contact_email').value || '').trim();
+      const ein = document.getElementById('ein').value.trim();
 
       if (!code) {
         promoFeedback.style.display = 'none';
@@ -486,9 +495,11 @@
 
       try {
         let url = '/validate-promo?code=' + encodeURIComponent(code);
+        url += '&ein=' + encodeURIComponent(ein);
         if (email) url += '&email=' + encodeURIComponent(email);
         const res  = await fetch(url);
         const data = await res.json();
+        if(code!==promoInput.value.trim()||email!==(document.getElementById('contact_email').value||'').trim()||ein!==document.getElementById('ein').value.trim())return;
 
         promoFeedback.style.display = 'block';
 
@@ -497,14 +508,15 @@
           promoFeedback.textContent = '✓ Promo code applied — first grant complimentary';
           promoValid.value = 'true';
           priceDisplay.textContent = 'Complimentary ($0)';
+          document.getElementById('checkout-submit').textContent = 'Submit complimentary application — $0 →';
         } else if (data.already_used) {
           promoFeedback.style.color = '#b00020';
-          promoFeedback.textContent = '✗ This code has already been used — standard pricing applies';
+          promoFeedback.textContent = '✗ This code cannot be applied. No paid checkout will be created while a code is entered.';
           promoValid.value = 'false';
           priceDisplay.textContent = '$450';
         } else {
           promoFeedback.style.color = '#b00020';
-          promoFeedback.textContent = '✗ Invalid or expired code';
+          promoFeedback.textContent = '✗ Code not available for this application. Check the code and nonprofit details.';
           promoValid.value = 'false';
           priceDisplay.textContent = '$450';
         }

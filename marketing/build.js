@@ -1,6 +1,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const service = require('./service');
+const discovery = require('./discovery');
 const escape = value => String(value).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
 const faq = require('./faq');
 const pages = [...require('./pages'), require('./sample'), require('./privacy'), {
@@ -36,9 +37,10 @@ function html(page) {
     '@context':'https://schema.org',
     '@graph':[
       {'@type':'Organization','@id':service.origin+'/#organization',name:service.name,url:service.origin+'/',logo:service.origin+'/logo.svg',email:service.email},
+      ...(page.path==='/' ? [{'@type':'WebSite','@id':service.origin+'/#website',name:service.name,url:service.origin+'/',publisher:{'@id':service.origin+'/#organization'}}] : []),
       {'@type':page.article ? 'Article':'WebPage','@id':canonical+'#page',url:canonical,name:page.title,headline:page.heading?.replace(/<br>/g,' ')||page.title,description:page.description,
         ...(servicePage ? {mainEntity:{'@id':serviceId}} : {}),
-        ...(page.article ? {author:{'@id':service.origin+'/#organization'},publisher:{'@id':service.origin+'/#organization'},datePublished:'2026-10-19'} : {})},
+        ...(page.article ? {author:{'@id':service.origin+'/#organization'},publisher:{'@id':service.origin+'/#organization'},image:[service.origin+'/social-card.png'],datePublished:'2026-10-19'} : {})},
       ...(servicePage ? [{
         '@type':'Service','@id':serviceId,name:'Nonprofit grant application writing',
         url:service.origin+'/services/nonprofit-grant-writing',
@@ -65,7 +67,7 @@ function html(page) {
   ).join(' <span aria-hidden="true">/</span> ')+'</nav>';
   const content = page.type === 'home' ? body :
     breadcrumbHtml+'<section class="page-hero"><div class="wrap"><p class="eyebrow">' + (page.article?'A practical resource':'Wellspring Grants') + '</p><h1>' + page.heading + '</h1><p class="lead">' + page.intro + '</p></div></section><section class="section white"><div class="wrap' + (page.article?' article-layout':'') + '">' + (page.article?'<article class="content">':'') + body + (page.article?'</article><aside class="sidebar"><h2>One application.<br>$450.</h2><p class="small">Funder-targeted writing, human review and editable delivery.</p><a class="button" href="/fit">Check fit →</a><a href="/pricing">Pricing and scope</a><a href="/sample-grant-application">See the sample</a><a href="/resources">All resources</a></aside>':'') + '</div></section>';
-  return '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>' + escape(page.title) + '</title><meta name="description" content="' + escape(page.description) + '"><link rel="canonical" href="' + canonical + '"><meta property="og:type" content="' + (page.article?'article':'website') + '"><meta property="og:site_name" content="Wellspring Grants"><meta property="og:title" content="' + escape(page.title) + '"><meta property="og:description" content="' + escape(page.description) + '"><meta property="og:url" content="' + canonical + '"><meta property="og:image" content="' + service.origin + '/social-card.png"><meta property="og:image:alt" content="Wellspring Grants. Grant writing for small nonprofit teams."><meta name="twitter:card" content="summary_large_image"><link rel="icon" href="/logo.svg" type="image/svg+xml"><link rel="stylesheet" href="/organic.css"><script type="application/ld+json">' + JSON.stringify(entity).replace(/</g,'\\u003c') + '</script><script src="/source-attribution.js" defer></script><script src="/measurement.js" defer></script><script src="/organic.js" defer></script></head><body>' + header(page.path) + '<main id="main">' + content + '</main>' + closing + footer + '</body></html>\n';
+  return '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>' + escape(page.title) + '</title><meta name="description" content="' + escape(page.description) + '"><link rel="canonical" href="' + canonical + '"><meta property="og:type" content="' + (page.article?'article':'website') + '"><meta property="og:site_name" content="Wellspring Grants"><meta property="og:title" content="' + escape(page.title) + '"><meta property="og:description" content="' + escape(page.description) + '"><meta property="og:url" content="' + canonical + '"><meta property="og:image" content="' + service.origin + '/social-card.png"><meta property="og:image:type" content="image/png"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta property="og:image:alt" content="Wellspring Grants. Grant writing for small nonprofit teams."><meta name="twitter:card" content="summary_large_image"><link rel="icon" href="/logo.svg" type="image/svg+xml"><link rel="stylesheet" href="/organic.css"><script type="application/ld+json">' + JSON.stringify(entity).replace(/</g,'\\u003c') + '</script><script src="/source-attribution.js" defer></script><script src="/measurement.js" defer></script><script src="/organic.js" defer></script></head><body>' + header(page.path) + '<main id="main">' + content + '</main>' + closing + footer + '</body></html>\n';
 }
 function build() {
   const manifest=[];
@@ -79,6 +81,8 @@ function build() {
   const text = require('./sample').body.replace(/<\/(?:p|h2|li|tr)>/g,'\n\n').replace(/<br\s*\/?>/g,'\n').replace(/<[^>]*>/g,' ').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&nbsp;/g,' ').replace(/[ \t]+/g,' ').trim();
   fs.writeFileSync(path.join(root,'sample-grant-application.txt'),'WELLSPRING GRANTS — FICTIONAL DEMONSTRATION\n\n'+text+'\n');
   fs.writeFileSync(path.join(__dirname,'manifest.js'),'// Generated by npm run build:marketing\nmodule.exports = '+JSON.stringify(manifest,null,2)+';\n');
+  fs.writeFileSync(path.join(root,'robots.txt'),discovery.robots());
+  fs.writeFileSync(path.join(root,'sitemap.xml'),discovery.sitemap(manifest));
   return manifest;
 }
 if (require.main===module) console.log('Built '+build().length+' public pages.');

@@ -2,6 +2,7 @@ const {randomUUID} = require('node:crypto');
 const {lead, text, email, url, date, signLead, readLead} = require('./validation');
 const {acknowledge} = require('./email');
 const {optedOut}=require('../public/source-attribution');
+const {reply:fitReply}=require('./fit-response');
 const wrap = fn => (req,res,next) => Promise.resolve(fn(req,res,next)).catch(next);
 function sameOrigin(req,res,next) {
   const expected = new URL(process.env.APP_URL).origin;
@@ -22,9 +23,9 @@ function register(app,pool,acknowledger=acknowledge) {
   app.get('/fit',(req,res)=>res.sendFile(require('path').join(__dirname,'../public/fit.html')));
   app.get('/privacy',(req,res)=>res.sendFile(require('path').join(__dirname,'../public/privacy.html')));
   app.post('/api/fit',limiter(),sameOrigin,wrap(async(req,res)=>{
-    if(req.body.company_fax) return res.status(400).json({error:'Unable to submit inquiry.'});
+    if(req.body.company_fax) return fitReply(req,res,400,{error:'Unable to submit inquiry.'});
     let data;
-    try { data=lead(req.body); } catch(error) { return res.status(400).json({error:error.message}); }
+    try { data=lead(req.body); } catch(error) { return fitReply(req,res,400,{error:error.message}); }
     if(optedOut(req.get('DNT'))||req.get('Sec-GPC')==='1')data.source='unattributed';
     const id=randomUUID(), keys=Object.keys(data);
     const client=await pool.connect();
@@ -33,7 +34,7 @@ function register(app,pool,acknowledger=acknowledge) {
       // Advisory lock serializes repeat inquiries from the same address.
       await client.query('SELECT pg_advisory_xact_lock(hashtext($1))',[data.email]);
       const recent=await client.query("SELECT id FROM acquisition_leads WHERE email=$1 AND created_at>now()-interval '1 hour'",[data.email]);
-      if(recent.rows.length>=3) { await client.query('ROLLBACK'); return res.status(429).json({error:'Your recent inquiries are saved. Please wait before sending another.'}); }
+      if(recent.rows.length>=3) { await client.query('ROLLBACK'); return fitReply(req,res,429,{error:'Your recent inquiries are saved. Please wait before sending another.'}); }
       await client.query(`INSERT INTO acquisition_leads (id,${keys.join(',')},consent_at,follow_up_at) VALUES ($1,${keys.map((_,i)=>`$${i+2}`).join(',')},now(),now()+interval '1 day')`,[id,...Object.values(data)]);
       await client.query("INSERT INTO acquisition_events (lead_id,event) VALUES ($1,'inquiry')",[id]);
       await client.query('COMMIT');
@@ -41,7 +42,7 @@ function register(app,pool,acknowledger=acknowledge) {
     res.cookie('ws_lead',signLead(id,process.env.ADMIN_PASSWORD),{httpOnly:true,secure:process.env.APP_URL.startsWith('https://'),sameSite:'lax',maxAge:30*86400000,path:'/'});
     // Persist first; provider failure never loses the inquiry or masquerades as delivery.
     try { await acknowledger(pool,id); } catch { console.error('Fit acknowledgment pending retry:',id); }
-    res.status(201).json({saved:true,message:'Your inquiry is saved. We’ll review your grant fit and reply by email.'});
+    fitReply(req,res,201,{saved:true,message:'Your inquiry is saved. We’ll review your grant fit and reply by email.'});
   }));
   app.get('/admin/leads',(req,res)=>res.sendFile(require('path').join(__dirname,'../public-admin/leads.html')));
   app.get('/admin/api/leads',wrap(async(req,res)=>{
